@@ -56,7 +56,8 @@ def run(*args, cwd, home=None):
     if home:
         env["ATLASIX_HOME"] = str(home)
     return subprocess.run(
-        [sys.executable, "-m", "atlasix", *args], cwd=cwd, capture_output=True, text=True, env=env
+        [sys.executable, "-m", "atlasix", *args], cwd=cwd, capture_output=True,
+        text=True, encoding="utf-8", errors="replace", env=env,
     )
 
 
