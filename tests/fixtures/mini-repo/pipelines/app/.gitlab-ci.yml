@@ -1,0 +1,20 @@
+.build-template:
+  stage: build
+  script:
+    - echo building
+    - docker build -t app .
+build-dev:
+  extends: .build-template
+  script:
+    - echo building
+    - docker build -t app .
+build-test:
+  extends: .build-template
+  script:
+    - echo building
+    - docker build -t app .
+deploy:
+  stage: deploy
+  script:
+    - echo deploy through ansible
+  needs: [build-dev]

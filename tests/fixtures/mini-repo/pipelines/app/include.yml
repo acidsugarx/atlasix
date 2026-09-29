@@ -1,0 +1,2 @@
+include:
+  - local: pipelines/app/.gitlab-ci.yml

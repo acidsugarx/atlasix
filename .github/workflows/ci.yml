@@ -1,0 +1,30 @@
+name: ci
+on:
+  push: {branches: [main]}
+  pull_request:
+jobs:
+  matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync
+      - run: uv run pytest
+      - name: smoke on fixture
+        shell: bash
+        run: |
+          cd tests/fixtures/mini-repo
+          uv run --project ../../../ atlasix init
+          uv run --project ../../../ atlasix build --no-vectors
+          uv run --project ../../../ atlasix profile
+          uv run --project ../../../ atlasix search "docker build" --top 3
+      - name: no posix-only calls
+        shell: bash
+        run: |
+          ! grep -rn "fcntl\|os\.fork" atlasix/

@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.atlas/index.db
+.atlas/index.db-wal
+.atlas/index.db-shm
+.pytest_cache/
