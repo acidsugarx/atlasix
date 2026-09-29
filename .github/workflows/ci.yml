@@ -21,9 +21,13 @@ jobs:
         run: |
           cd tests/fixtures/mini-repo
           uv run --project ../../../ atlasix init
+          uv run --project ../../../ atlasix pack import gitlab-ci
           uv run --project ../../../ atlasix build --no-vectors
           uv run --project ../../../ atlasix profile
+          uv run --project ../../../ atlasix lint
           uv run --project ../../../ atlasix search "docker build" --top 3
+          uv run --project ../../../ atlasix duplicates
+          test ! -d .atlas   # no repo pollution (state is central)
       - name: no posix-only calls
         shell: bash
         run: |
