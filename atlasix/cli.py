@@ -525,6 +525,7 @@ def cmd_skill(args):
         print("SKILL.md not found in package", file=sys.stderr)
         sys.exit(2)
     body = src.read_text(encoding="utf-8")
+    guide = src.parent / "packs-authoring.md" if src.parent.name == "atlasix" else src.with_name("packs-authoring.md")
     if args.dir:
         roots = [("custom", Path(args.dir))]
     else:
@@ -534,6 +535,8 @@ def cmd_skill(args):
         d = root / "atlasix"
         d.mkdir(parents=True, exist_ok=True)
         (d / "SKILL.md").write_text(body, encoding="utf-8")
+        if guide.is_file():
+            (d / "packs-authoring.md").write_text(guide.read_text(encoding="utf-8"), encoding="utf-8")
         print(f"installed skill for {harness}: {d / 'SKILL.md'}")
     if not args.dir and len(roots) == 1:
         print("note: only default root used; other harnesses not detected (pass --dir to force)")

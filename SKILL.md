@@ -49,6 +49,15 @@ Before touching code, run:
 After a refactor, `atlasix lint` is the acceptance criterion: duplication
 warnings should drop, unresolved refs must stay at zero (exit 0).
 
+## Authoring packs & rules (when no built-in pack fits)
+
+Full reference with workflow, extractor/resolver tables and the `where`
+expression whitelist: read `packs-authoring.md` in this skill directory
+(`skill://atlasix/packs-authoring.md`). Short loop: `profile` → skim files →
+write pack.yaml → `build --no-vectors` + `profile` → verify with `who-uses` /
+`show --resolved` / `duplicates` → add rules → `lint` until signal/noise is
+good → upstream into `atlasix/packs/<name>/` if it generalizes.
+
 ## Notes
 
 - State location: repo `.atlas/` if it exists, else `~/.atlasix/repos/<name>-<hash>/`
