@@ -502,6 +502,42 @@ def cmd_update(args):
         sys.exit(r.returncode)
     subprocess.run([sys.executable, "-c", "from atlasix import __version__; print('now:', __version__)"])
 
+
+SKILL_ROOTS = [
+    # (harness, skills root) — oh-my-pi/pi canonical `agents` provider is the default
+    ("oh-my-pi / pi (agents)", Path.home() / ".agents" / "skills"),
+    ("Claude Code", Path.home() / ".claude" / "skills"),
+    ("opencode", Path.home() / ".config" / "opencode" / "skill"),
+    ("codex", Path.home() / ".codex" / "skills"),
+]
+
+
+def cmd_skill(args):
+    import shutil as _sh
+    from pathlib import Path as _P
+
+    candidates = [
+        _P(__file__).parent / "SKILL.md",           # wheel (force-include)
+        _P(__file__).parent.parent / "SKILL.md",    # repo checkout (editable)
+    ]
+    src = next((c for c in candidates if c.is_file()), None)
+    if src is None:
+        print("SKILL.md not found in package", file=sys.stderr)
+        sys.exit(2)
+    body = src.read_text(encoding="utf-8")
+    if args.dir:
+        roots = [("custom", Path(args.dir))]
+    else:
+        detected = [(h, r) for h, r in SKILL_ROOTS if r.parent.exists()]
+        roots = detected or [SKILL_ROOTS[0]]
+    for harness, root in roots:
+        d = root / "atlasix"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "SKILL.md").write_text(body, encoding="utf-8")
+        print(f"installed skill for {harness}: {d / 'SKILL.md'}")
+    if not args.dir and len(roots) == 1:
+        print("note: only default root used; other harnesses not detected (pass --dir to force)")
+
 def main(argv=None):
     try:
         import signal
@@ -522,6 +558,11 @@ def main(argv=None):
     b.set_defaults(fn=cmd_build)
     rs = sub.add_parser("repos")
     rss = rs.add_subparsers(dest="repos_cmd")
+    sk = sub.add_parser("skill")
+    sksub = sk.add_subparsers(dest="skill_cmd", required=True)
+    ski = sksub.add_parser("install")
+    ski.add_argument("--dir", help="custom skills root (default: autodetect harness roots)")
+    sk.set_defaults(fn=cmd_skill, skill_cmd="install")
     rss.add_parser("list")
     rp = rss.add_parser("prune")
     rp.add_argument("--unknown", action="store_true", help="also prune state dirs without a root marker")

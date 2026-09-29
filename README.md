@@ -31,8 +31,9 @@ Paste this prompt — the agent reads the instruction and does everything itself
 (install, pack import, build, then uses `who-uses`/`duplicates`/`search`/`lint`):
 
 ```text
-Follow https://raw.githubusercontent.com/acidsugarx/atlasix/main/AGENT.md and
-index this repository. Use atlasix for orientation before any change and run
+Follow https://raw.githubusercontent.com/acidsugarx/atlasix/main/AGENT.md,
+run `atlasix skill install` so you permanently remember atlasix, and index
+this repository. Use atlasix for orientation before any change and run
 `atlasix build && atlasix lint` after refactoring as the acceptance check.
 ```
 

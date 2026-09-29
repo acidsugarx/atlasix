@@ -24,3 +24,6 @@ dev = ["pytest>=8"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["atlasix"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"SKILL.md" = "atlasix/SKILL.md"

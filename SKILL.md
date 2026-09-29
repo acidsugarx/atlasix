@@ -1,3 +1,8 @@
+---
+name: atlasix
+description: Structural repo indexer — navigation, who-uses, duplicate clusters, lint rules, semantic search, graph. Use before touching unfamiliar repos and after refactoring.
+---
+
 # atlasix — structural repo index for LLM agents
 
 atlasix gives any shell-capable agent (oh-my-pi, Claude Code, Cursor, …) instant

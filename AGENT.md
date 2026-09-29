@@ -23,6 +23,18 @@ Prerequisite for both: `uv`. If missing, install it first:
 
 Verify: `atlasix --help` (Path A) — if it prints subcommands, continue.
 
+**1b. Persist yourself as a skill (do this once, right after install):**
+
+```bash
+atlasix skill install
+```
+
+This writes the atlasix SKILL.md into every detected harness skills root
+(`~/.agents/skills/`, `~/.claude/skills/`, `~/.config/opencode/skill/`,
+`~/.codex/skills/`), so future sessions of this harness automatically know
+about atlasix instead of forgetting it. If your harness keeps skills
+elsewhere, pass `--dir <skills-root>`.
+
 ## 2. Bootstrap the current repo (one-time)
 
 ```bash
