@@ -409,10 +409,15 @@ def cmd_graph(args):
             print("entity not found", file=sys.stderr)
             sys.exit(1)
         p = gmod.shortest_path(g, ea[0]["id"], eb[0]["id"])
+        rev = False
+        if not p:
+            p = gmod.shortest_path(g.reverse(copy=False), ea[0]["id"], eb[0]["id"])
+            rev = True
         if not p:
             print("no path")
         else:
-            print(" -> ".join(gmod.label(g, n) for n in p))
+            arrow = " <-" if rev else " -> "
+            print(arrow.join(gmod.label(g, n) for n in p))
         return
     targets = _find_entities(conn, args.target)
     if not targets:
