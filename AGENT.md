@@ -23,6 +23,12 @@ Prerequisite for both: `uv`. If missing, install it first:
 
 Verify: `atlasix --help` (Path A) — if it prints subcommands, continue.
 
+**1c. Bind the repo (done by `atlasix init`):** init embeds a managed
+`<!-- atlasix:begin -->` section into the repo's `AGENTS.md` — every harness
+(oh-my-pi, opencode, Claude Code, …) auto-loads it in this repo, so the
+rules above are enforced in all future sessions. Commit the AGENTS.md change.
+Skip with `atlasix init --no-agents-md` if undesired.
+
 **1b. Persist yourself as a skill (do this once, right after install):**
 
 ```bash

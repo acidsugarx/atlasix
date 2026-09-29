@@ -124,7 +124,7 @@ def test_empty_pack_central_by_default(tmp_path):
     d.mkdir()
     (d / "a.txt").write_text("hi")
     home = tmp_path / "atlasix-home"
-    assert run("init", cwd=d, home=home).returncode == 0
+    assert run("init", "--no-agents-md", cwd=d, home=home).returncode == 0
     assert not (d / ".atlas").exists()  # no repo pollution
     r = run("build", "--no-vectors", cwd=d, home=home)
     assert r.returncode == 0
@@ -239,3 +239,19 @@ def test_pack_import_from_dir(tmp_path):
     r = run("pack", "import", "mycorp", "--from", str(tmp_path / "corp"), cwd=d, home=home)
     assert r.returncode == 0, r.stderr
     assert run("build", "--no-vectors", cwd=d, home=home).returncode == 0
+
+
+def test_init_embeds_agents_md(tmp_path):
+    import shutil as _sh
+
+    d = tmp_path / "repo"
+    _sh.copytree(FIXTURE, d)
+    home = tmp_path / "home"
+    (d / "AGENTS.md").write_text("# existing\n", encoding="utf-8")
+    assert run("init", cwd=d, home=home).returncode == 0
+    body = (d / "AGENTS.md").read_text(encoding="utf-8")
+    assert body.startswith("# existing")
+    assert "atlasix:begin" in body and "atlasix lint" in body
+    # idempotent: no section duplication
+    run("init", cwd=d, home=home)
+    assert (d / "AGENTS.md").read_text(encoding="utf-8").count("atlasix:begin") == 1

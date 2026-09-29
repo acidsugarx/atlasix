@@ -153,6 +153,40 @@ def cmd_repos(args):
 
 # ------------------------------------------------------------------ commands
 
+AGENTS_SECTION = """<!-- atlasix:begin (managed) -->
+## atlasix — structural index of this repo
+
+This repo is indexed with [atlasix](https://github.com/acidsugarx/atlasix).
+Working rules for any agent:
+
+- BEFORE changing anything: `atlasix build` (if index is stale), then
+  `atlasix who-uses <symbol>` / `atlasix show <path> --resolved` /
+  `atlasix search "<intent>"` / `atlasix duplicates` to understand impact.
+- AFTER refactoring: `atlasix build && atlasix lint` is the acceptance check —
+  duplication warnings must not grow; unresolved-ref findings must not appear.
+- Full docs & pack authoring: `skill://atlasix` (or the AGENT.md at the URL above).
+<!-- atlasix:end -->
+"""
+
+
+def _embed_agents_md(root: Path):
+    f = root / "AGENTS.md"
+    section = AGENTS_SECTION
+    if f.exists():
+        body = f.read_text(encoding="utf-8")
+        if "atlasix:begin" in body:
+            import re as _re
+
+            body = _re.sub(r"<!-- atlasix:begin.*?atlasix:end -->\n?", section, body, flags=_re.S)
+            f.write_text(body, encoding="utf-8")
+            print(f"updated atlasix section in {f}")
+            return
+        f.write_text(body.rstrip("\n") + "\n\n" + section, encoding="utf-8")
+    else:
+        f.write_text(section, encoding="utf-8")
+    print(f"wrote atlasix section to {f} — commit it so every agent sees these rules")
+
+
 def cmd_init(args):
     root = _root()
     if args.local:
@@ -166,6 +200,8 @@ def cmd_init(args):
         print(f"wrote {pack} (empty pack)")
     if d == root / ".atlas":
         (d / ".gitignore").write_text("index.db\nindex.db-wal\nindex.db-shm\n", encoding="utf-8")
+    if not args.no_agents_md:
+        _embed_agents_md(root)
     print(f"initialized {d}")
 
 
@@ -559,6 +595,7 @@ def main(argv=None):
     ip = sub.add_parser("init")
     sub.add_parser("update").set_defaults(fn=cmd_update)
     ip.add_argument("--local", action="store_true", help="create .atlas/ inside the repo instead of ~/.atlasix/repos/")
+    ip.add_argument("--no-agents-md", action="store_true", help="skip embedding atlasix rules into repo AGENTS.md")
     ip.set_defaults(fn=cmd_init)
     b = sub.add_parser("build")
     b.add_argument("--no-vectors", action="store_true")
