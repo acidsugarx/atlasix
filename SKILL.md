@@ -40,7 +40,7 @@ warnings should drop, unresolved refs must stay at zero (exit 0).
 ## Notes
 
 - Index lives in `.atlas/index.db` (gitignored); rebuild is always full.
-- Vectors (fastembed, local ONNX bge-small-en-v1.5) download once into the user
+- Vectors (fastembed, local ONNX paraphrase-multilingual-MiniLM-L12-v2 (multilingual)) download once into the user
   cache; `atlasix build --no-vectors` skips them, search degrades to BM25.
 - Rule `where` expressions are AST-whitelisted; anything unsafe fails rule
   loading with file+reason.

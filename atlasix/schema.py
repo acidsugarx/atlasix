@@ -42,7 +42,9 @@ CREATE TABLE IF NOT EXISTS chunks(
 );
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 """
-VEC_DDL = "CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[384]);"
+MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"  # multilingual, 384-dim, local ONNX
+VEC_DIM = 384
+VEC_DDL = f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[{VEC_DIM}]);"
 
 
 def connect(db_path, *, for_write: bool = False) -> sqlite3.Connection:

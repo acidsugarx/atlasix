@@ -249,7 +249,9 @@ def cmd_search(args):
 
         bm25 = BM25Okapi([t.lower().split() for t in texts])
         bm = bm25.get_scores(args.text.lower().split())
-        order = sorted(range(len(rows)), key=lambda i: -bm[i])[: 5 * args.top]
+        order = [i for i in range(len(rows)) if bm[i] > 0]
+        order.sort(key=lambda i: -bm[i])
+        order = order[: 5 * args.top]
         rrf = {rows[i]["id"]: 0.0 for i in order}
         for rank, i in enumerate(order):
             rrf[rows[i]["id"]] += 1.0 / (60 + rank + 1)
@@ -261,7 +263,7 @@ def cmd_search(args):
             import numpy as np
             from fastembed import TextEmbedding
 
-            qv = list(TextEmbedding("BAAI/bge-small-en-v1.5").embed([args.text]))[0]
+            qv = list(TextEmbedding(schema.MODEL).embed([args.text]))[0]
             qv = np.array(qv if not hasattr(qv, "tolist") else qv)
             mats, ids = [], []
             for r in rows:
