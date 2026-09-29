@@ -152,3 +152,25 @@ def test_config_roundtrip(monkeypatch, tmp_path):
     config.KEY_PATH.write_bytes(b"\x00" * 32)
     with _pytest.raises(ValueError):
         config.get_effective("hf_token")
+
+
+def test_pack_import(tmp_path):
+    import shutil
+
+    from atlasix import packs
+
+    d = tmp_path / "repo"
+    shutil.copytree(FIXTURE, d)
+    atlas = d / ".atlas"
+    (atlas / "rules").mkdir(parents=True)
+    (atlas / "pack.yaml").write_text(PACK, encoding="utf-8")  # custom pack → guard
+
+    r = run("pack", "import", "gitlab-ci", cwd=d)
+    assert r.returncode == 3  # refuses to overwrite custom pack
+    written = packs.install("gitlab-ci", atlas, force=True)
+    assert any("pack.yaml" in w for w in written)
+    # imported pack is valid and lintable
+    assert run("build", "--no-vectors", cwd=d).returncode == 0
+    r = run("lint", cwd=d)
+    assert r.returncode == 0
+    assert "job-duplication" in r.stdout

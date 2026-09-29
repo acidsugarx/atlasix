@@ -10,7 +10,9 @@ lives in a committed `.atlas/pack.yaml` plus `.atlas/rules/*.yaml`.
 
 ### Repo has no `.atlas/` directory (bootstrap)
 
-1. Run `atlasix init`, then `atlasix build` with the empty pack, then
+1. Check `atlasix pack list` — a built-in pack may already fit (e.g.
+   `atlasix pack import gitlab-ci` for GitLab CI monorepos). Otherwise run
+   `atlasix init`, then `atlasix build` with the empty pack, then
    `atlasix profile`. Profile output (dir tree, extensions, unresolved refs,
    duplicate clusters) is domain-free and is your input for authoring a pack.
 2. Read `atlasix bootstrap-hint` — it prints valid pack + rules examples.

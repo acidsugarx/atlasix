@@ -1,0 +1,5 @@
+id: unresolved-ref
+severity: warn
+match: {kind: job}
+where: "len([r for r in index.unresolved_refs if r['path'] == fact.path and r['name'] == fact.name and r['rel'] in ('extends', 'includes', 'include_local')]) > 0"
+message: "Джоба {name} в {path} имеет неразрезолвленный реф (extends/include)"

@@ -15,6 +15,7 @@ ALLOWED_NODES = (
     ast.Gt, ast.GtE, ast.Lt, ast.LtE,
     ast.Attribute, ast.Name, ast.Load, ast.Constant,
     ast.Call, ast.Subscript, ast.Index, ast.Slice,
+    ast.List, ast.Tuple, ast.Set, ast.Dict,
     ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.comprehension, ast.Store,
     ast.BinOp, ast.USub, ast.UAdd,
 )

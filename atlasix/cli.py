@@ -399,6 +399,31 @@ def cmd_config(args):
             print(f"{k}: {v or '(default)'}")
 
 
+
+def cmd_pack(args):
+    from . import packs
+
+    if args.pack_cmd == "list":
+        found = packs.available()
+        if not found:
+            print("no built-in packs")
+        for p in found:
+            print(f"{p['name']}: {p['description'] or '(no description)'}")
+        return
+    # import
+    root = _root()
+    try:
+        written = packs.install(args.name, _atlas_dir(root), force=args.force)
+    except KeyError as e:
+        print(e, file=sys.stderr)
+        sys.exit(2)
+    except FileExistsError as e:
+        print(f"{e}", file=sys.stderr)
+        sys.exit(3)
+    for f in written:
+        print(f"installed {f}")
+    print("next: atlasix build && atlasix lint")
+
 def main(argv=None):
     try:
         import signal
@@ -413,6 +438,13 @@ def main(argv=None):
     b.add_argument("--no-vectors", action="store_true")
     b.add_argument("--json", action="store_true")
     b.set_defaults(fn=cmd_build)
+    pk = sub.add_parser("pack")
+    psub = pk.add_subparsers(dest="pack_cmd", required=True)
+    psub.add_parser("list")
+    pi = psub.add_parser("import")
+    pi.add_argument("name")
+    pi.add_argument("--force", action="store_true")
+    pk.set_defaults(fn=cmd_pack, pack_cmd="list")
     c = sub.add_parser("config")
     csub = c.add_subparsers(dest="config_cmd", required=True)
     cs = csub.add_parser("set")

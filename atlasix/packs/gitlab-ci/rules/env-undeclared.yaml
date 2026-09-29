@@ -1,0 +1,5 @@
+id: env-undeclared
+severity: warn
+match: {kind: job}
+where: "index.has_unresolved_edge(fact.id, 'uses_var')"
+message: "Джоба {name} использует переменную окружения, не описанную в lib README"

@@ -21,6 +21,7 @@ $ atlasix who-uses .ansible_deploy
 $ atlasix duplicates
 $ atlasix search "docker build push"
 $ atlasix graph .ansible_deploy --depth 2 --dot
+$ atlasix pack import gitlab-ci   # built-in domain pack + rules
 $ atlasix lint
 ```
 

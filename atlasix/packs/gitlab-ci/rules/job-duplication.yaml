@@ -1,0 +1,6 @@
+id: job-duplication
+severity: warn
+match:
+  kind: job
+where: "index.in_duplicate_cluster(fact.id)"
+message: "Джоба {name} дублирует кластер — вынести в общий блок"
