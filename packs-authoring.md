@@ -20,9 +20,13 @@ This is a complete reference. Workflow first, syntax after.
    - resolved edges share healthy? unresolved refs should be REAL breakage, not pattern misses
    - `atlasix who-uses <anchor>` and `atlasix show <file> --resolved` must look right
 5. Add rules to `.atlas/rules/*.yaml`. `atlasix lint` — tune until signal/noise is good.
-6. If the pack generalizes (a whole domain, not one repo), upstream it:
-   `atlasix/packs/<name>/{pack.yaml,rules/}` in the atlasix repo — becomes
-   `atlasix pack import <name>` for everyone.
+6. Ship it wherever fits:
+   - **private (recommended default)**: keep the pack in your own repo/dir and
+     install with `atlasix pack import <name> --from <dir-or-git-url>` —
+     works for company-internal pack repos (ssh/https/file URLs; layout:
+     `<repo>/<name>/{pack.yaml,rules/}` or pack at repo root);
+   - **upstream**: if the domain is generic (not company-specific), contribute
+     `atlasix/packs/<name>/` to the atlasix repo → `pack import <name>` for everyone.
 
 ## pack.yaml reference
 

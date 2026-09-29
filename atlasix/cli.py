@@ -471,7 +471,7 @@ def cmd_pack(args):
     # import
     root = _root()
     try:
-        written = packs.install(args.name, _atlas_dir(root, create=True), force=args.force)
+        written = packs.install(args.name, _atlas_dir(root, create=True), force=args.force, frm=getattr(args, "from", None))
     except KeyError as e:
         print(e, file=sys.stderr)
         sys.exit(2)
@@ -580,6 +580,7 @@ def main(argv=None):
     psub.add_parser("list")
     pi = psub.add_parser("import")
     pi.add_argument("name")
+    pi.add_argument("--from", help="pack source: local dir or git URL (private packs); default: built-in registry")
     pi.add_argument("--force", action="store_true")
     pk.set_defaults(fn=cmd_pack, pack_cmd="list")
     c = sub.add_parser("config")
