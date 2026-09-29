@@ -190,6 +190,7 @@ def lint(conn: sqlite3.Connection, rules: list[Rule]) -> list[dict]:
 
 def _fmt(message: str, fact: dict, view: _IndexView) -> str:
     kwargs = dict(fact)
+    kwargs.update(fact.get("_data") or {})
     kwargs.pop("_data", None), kwargs.pop("_index", None)
     kwargs["cluster_id"] = "dup"
     try:

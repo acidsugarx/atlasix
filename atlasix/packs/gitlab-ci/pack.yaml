@@ -5,7 +5,7 @@ entity_types:
   job:
     files: ["**/*.yml", "**/*.yaml"]
     extractor: yaml_jobs
-    fields: [stage, image, tags, script]
+    fields: [stage, image, tags, script, variables, needs, rules, when]
   env_var:
     files: ["lib/**/README.md"]
     extractor: regex
@@ -13,16 +13,16 @@ entity_types:
   nu_module:
     files: ["**/*.nu"]
     extractor: line_symbols
-    pattern: '^\s*export def\s+(?P<name>[\w-]+)'
+    pattern: '^\s*(export\s+)?def\s+(?P<name>[\w-]+)'
 references:
   extends:
     from: {entity: job, field: extends}
-    resolve: same_doc_dict
+    resolve: global_name        # same-file AND included lib blocks (GitLab resolves cross-file via include)
   includes:
-    from: {entity: file, field: raw_regex, pattern: '(\S+\.ya?ml)@(\S+)'}
+    from: {entity: file, field: raw_regex, pattern: "[\"'](/?[A-Za-z0-9_./-]+\\.ya?ml)[\"']"}
     resolve: repo_path
-  include_local:
-    from: {entity: file, field: raw_regex, pattern: 'local:\s*(\S+\.ya?ml)'}
+  includes_ref:
+    from: {entity: file, field: raw_regex, pattern: '(\S+\.ya?ml)@(\S+)'}
     resolve: repo_path
   uses_var:
     from: {entity: job, field: script, pattern: '\$\{?([A-Z][A-Z0-9_]+)\}?'}

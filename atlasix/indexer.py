@@ -144,8 +144,8 @@ class Indexer:
                 dst = cands[0]["id"]
         elif ref.resolve == "repo_path":
             norm = target.replace("\\", "/").split("@")[0]
-            while norm.startswith("./"):
-                norm = norm[2:]
+            while norm.startswith("./") or norm.startswith("/"):
+                norm = norm[1:] if norm.startswith("/") else norm[2:]
             fid = self._file_entity.get(norm)
             if fid is None:
                 for fpath, cand in self._file_entity.items():
@@ -154,6 +154,13 @@ class Indexer:
                         break
             if fid is not None:
                 dst = fid
+        elif ref.resolve == "global_name":
+            for r in by_name.get(target, []):
+                self.conn.execute(
+                    "INSERT INTO edges(src_id,dst_id,rel,raw_ref) VALUES(?,?,?,?)",
+                    (src_row["id"], r["id"], ref.rel, raw),
+                )
+            return
         elif ref.resolve == "entity_name":
             cands = [r for r in by_name.get(target, []) if r["kind"] == ref.to]
             if cands:

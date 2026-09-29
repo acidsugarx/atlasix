@@ -6,6 +6,11 @@ orientation in a structured repository: entity graph, reverse references
 graph analysis. The core knows nothing about your domain — all domain knowledge
 lives in a committed `.atlas/pack.yaml` plus `.atlas/rules/*.yaml`.
 
+## Tooling
+
+If `atlasix` is not on PATH, every command works zero-install via
+`uvx --from git+https://github.com/USER/atlasix atlasix <cmd>` (requires only `uv`).
+
 ## When to use
 
 ### Repo has no `.atlas/` directory (bootstrap)

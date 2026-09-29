@@ -1,0 +1,5 @@
+id: unpinned-image
+severity: warn
+match: {kind: job}
+where: "str(fact.data.get('image', '')).rsplit('/', 1)[-1].rsplit(':', 1)[-1].startswith('latest') or (str(fact.data.get('image', '')) != '' and not str(fact.data.get('image', '')).startswith('$') and '${' not in str(fact.data.get('image', '')) and str(fact.data.get('image', '')).rsplit('/', 1)[-1].find(':') == -1)"
+message: "Джоба {name}: образ {image} не запинен по тегу/digest (latest-тег или без тега)"
