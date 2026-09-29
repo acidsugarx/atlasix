@@ -33,6 +33,8 @@ User state in `~/.atlasix/` (settings, model cache, encrypted HF token):
 $ atlasix config set hf_token hf_...   # stored encrypted (secret.key, 0600)
 $ atlasix config set model_dir /path/to/local/onnx   # fully offline embeddings
 $ atlasix config list
+$ atlasix repos list                    # ok / ORPHANED state dirs + size
+$ atlasix repos prune                   # drop state of moved/deleted repos
 ```
 
 Agent workflow: see `SKILL.md`. Architecture rules: see `AGENTS.md`.

@@ -44,7 +44,11 @@ warnings should drop, unresolved refs must stay at zero (exit 0).
 - State location: repo `.atlas/` if it exists, else `~/.atlasix/repos/<name>-<hash>/`
   (default — no dotfolder pollution in the repo; `atlasix init --local` forces repo-local,
   useful for committed packs). `ATLASIX_HOME` env relocates the whole `~/.atlasix` root.
-  Rebuild is always full.
+  `ATLASIX_HOME` env relocates the whole `~/.atlasix` root. Rebuild is always full.
+- State-dir hygiene: each central dir carries a `root.txt` marker with the repo's
+  absolute path. `atlasix repos list` shows ok/ORPHANED/unknown + size;
+  `atlasix repos prune` deletes dirs whose repo path no longer exists
+  (`--unknown` also removes pre-marker dirs); live repos are never touched.
 - Vectors (fastembed, local ONNX paraphrase-multilingual-MiniLM-L12-v2 (multilingual)) download once into the user
   cache; `atlasix build --no-vectors` skips them, search degrades to BM25.
 - Rule `where` expressions are AST-whitelisted; anything unsafe fails rule

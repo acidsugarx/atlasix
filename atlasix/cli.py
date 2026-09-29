@@ -85,8 +85,14 @@ def _atlas_dir(root: Path, create: bool = False) -> Path:
     slug = _re.sub(r"[^A-Za-z0-9._-]+", "-", root.resolve().name) or "repo"
     digest = hashlib.sha256(str(root.resolve()).encode("utf-8")).hexdigest()[:8]
     d = config.ATLASIX_HOME / "repos" / f"{slug}-{digest}"
-    if create:
+    if create and not d.exists():
         d.mkdir(parents=True, exist_ok=True)
+        (d / "root.txt").write_text(str(root.resolve()), encoding="utf-8")
+    elif create:
+        d.mkdir(parents=True, exist_ok=True)
+        marker = d / "root.txt"
+        if not marker.exists():  # state dir created before markers existed
+            marker.write_text(str(root.resolve()), encoding="utf-8")
     return d
 
 
@@ -109,6 +115,40 @@ def _load_pack(root: Path) -> packmod.Pack:
     except packmod.PackError as e:
         print(f"pack error: {e}", file=sys.stderr)
         sys.exit(2)
+
+
+def cmd_repos(args):
+    from . import config
+
+    repos = config.ATLASIX_HOME / "repos"
+    if not repos.is_dir():
+        print(f"no state dirs in {repos}")
+        return
+    entries = []
+    for d in sorted(repos.iterdir()):
+        if not d.is_dir():
+            continue
+        marker = d / "root.txt"
+        root = marker.read_text(encoding="utf-8").strip() if marker.exists() else None
+        state = "unknown" if root is None else ("ok" if Path(root).is_dir() else "ORPHANED")
+        size = sum(f.stat().st_size for f in d.rglob("*") if f.is_file())
+        entries.append((d.name, root, state, size))
+    if args.repos_cmd in (None, "list"):
+        for name, root, state, size in entries:
+            print(f"{state:9} {size / 1_048_576:8.1f}MB  {name}  ->  {root or '?'}")
+        return
+    # prune
+    victims = [e for e in entries if e[2] == "ORPHANED"]
+    if args.unknown:
+        victims += [e for e in entries if e[2] == "unknown"]
+    if not victims:
+        print("nothing to prune")
+        return
+    import shutil as _shutil
+
+    for name, _root, _state, _size in victims:
+        _shutil.rmtree(repos / name)
+        print(f"pruned {name}")
 
 
 # ------------------------------------------------------------------ commands
@@ -458,6 +498,12 @@ def main(argv=None):
     b.add_argument("--no-vectors", action="store_true")
     b.add_argument("--json", action="store_true")
     b.set_defaults(fn=cmd_build)
+    rs = sub.add_parser("repos")
+    rss = rs.add_subparsers(dest="repos_cmd")
+    rss.add_parser("list")
+    rp = rss.add_parser("prune")
+    rp.add_argument("--unknown", action="store_true", help="also prune state dirs without a root marker")
+    rs.set_defaults(fn=cmd_repos, repos_cmd=None)
     pk = sub.add_parser("pack")
     psub = pk.add_subparsers(dest="pack_cmd", required=True)
     psub.add_parser("list")

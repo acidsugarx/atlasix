@@ -198,3 +198,26 @@ def test_pack_import(tmp_path):
     r = run("lint", cwd=d)
     assert r.returncode == 0
     assert "job-duplication" in r.stdout
+
+
+def test_repos_list_prune(tmp_path):
+    import shutil as _sh
+
+    home = tmp_path / "home"
+    d = tmp_path / "repoA"
+    d.mkdir()
+    (d / "a.txt").write_text("hi")
+    assert run("init", cwd=d, home=home).returncode == 0
+    gone = tmp_path / "repoB"
+    gone.mkdir()
+    (gone / "b.txt").write_text("hi")
+    assert run("init", cwd=gone, home=home).returncode == 0
+    _sh.rmtree(gone)
+
+    out = run("repos", "list", cwd=d, home=home).stdout
+    assert "ORPHANED" in out and "ok" in out
+    r = run("repos", "prune", cwd=d, home=home)
+    assert "pruned" in r.stdout
+    assert len(list((home / "repos").iterdir())) == 1
+    # live state dir untouched
+    assert run("build", "--no-vectors", cwd=d, home=home).returncode == 0
