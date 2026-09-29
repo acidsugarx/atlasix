@@ -32,6 +32,8 @@ Paste this prompt — the agent reads the instruction and does everything itself
 
 ```text
 Follow https://raw.githubusercontent.com/acidsugarx/atlasix/main/AGENT.md,
+register the MCP server if this harness supports MCP
+({"mcpServers": {"atlasix": {"command": "atlasix", "args": ["mcp"]}}}),
 run `atlasix skill install` so you permanently remember atlasix, and index
 this repository. Use atlasix for orientation before any change and run
 `atlasix build && atlasix lint` after refactoring as the acceptance check.

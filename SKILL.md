@@ -14,7 +14,22 @@ lives in a committed `.atlas/pack.yaml` plus `.atlas/rules/*.yaml`.
 ## Tooling
 
 If `atlasix` is not on PATH, every command works zero-install via
-`uvx --from git+https://github.com/USER/atlasix atlasix <cmd>` (requires only `uv`).
+`uvx --from git+https://github.com/acidsugarx/atlasix atlasix <cmd>` (requires only `uv`).
+
+## MCP (preferred when the harness supports it)
+
+`atlasix mcp` is a stdio MCP server exposing the same capabilities as
+first-class tools with schemas — no shell needed: `build`, `profile`, `show`,
+`who_uses`, `search`, `graph`, `duplicates`, `lint`, `pack_import`,
+`bootstrap_hint`. Register in the harness MCP config:
+
+```json
+{ "mcpServers": { "atlasix": { "command": "atlasix", "args": ["mcp"] } } }
+```
+
+Zero-install variant: `{"command": "uvx", "args": ["--from",
+"git+https://github.com/acidsugarx/atlasix", "atlasix", "mcp"]}`.
+The server operates on its working directory — launch it in the repo root.
 
 ## When to use
 
