@@ -52,6 +52,7 @@ def run(*args, cwd, home=None):
 
     env = dict(os.environ)
     env.pop("ATLASIX_HOME", None)
+    env["PYTHONIOENCODING"] = "utf-8"  # windows cp1251 console
     if home:
         env["ATLASIX_HOME"] = str(home)
     return subprocess.run(

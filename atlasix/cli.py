@@ -545,6 +545,11 @@ def main(argv=None):
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     except (ImportError, AttributeError, ValueError):
         pass  # windows
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except AttributeError:
+            pass  # stream without reconfigure support
     ap = argparse.ArgumentParser(prog="atlasix", description="structural repo index for LLM agents")
     ap.add_argument("--version", action="version", version=f"%(prog)s {__import__('atlasix').__version__}")
     sub = ap.add_subparsers(dest="cmd", required=True)
