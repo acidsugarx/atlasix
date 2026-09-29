@@ -8,7 +8,7 @@ from pathlib import Path
 
 from ruamel.yaml import YAML
 
-EXTRACTORS = {"yaml_jobs", "yaml_keys", "regex", "json_pointer", "line_symbols"}
+EXTRACTORS = {"yaml_jobs", "yaml_keys", "regex", "json_pointer", "line_symbols", "tree_sitter"}
 RESOLVERS = {"same_doc_dict", "repo_path", "entity_name", "global_name", "include_aware", "same_doc_anchor", "none"}
 
 
@@ -17,7 +17,7 @@ class PackError(Exception):
 
 
 class EntitySpec:
-    KEYS = {"files", "extractor", "fields", "pattern", "pointer"}
+    KEYS = {"files", "extractor", "fields", "pattern", "pointer", "language", "symbol_types"}
 
     def __init__(self, kind, cfg):
         if not isinstance(cfg, dict):
@@ -38,6 +38,9 @@ class EntitySpec:
         self.fields = cfg.get("fields", []) or []
         self.pattern = cfg.get("pattern")
         self.json_pointer = cfg.get("pointer")
+        if self.extractor == "tree_sitter":
+            self.language = cfg.get("language", "")
+            self.symbol_types = cfg.get("symbol_types", []) or []
         if self.extractor in ("regex", "line_symbols") and not self.pattern:
             raise PackError(f"entity_types.{kind}: extractor {self.extractor} needs 'pattern'")
         if self.extractor == "json_pointer" and not self.json_pointer:
@@ -173,6 +176,22 @@ def _scalar(v):
     return v
 
 
+_TS_LANG_BY_EXT = {
+    ".py": "python", ".rs": "rust", ".go": "go", ".js": "javascript", ".mjs": "javascript",
+    ".ts": "typescript", ".tsx": "tsx", ".jsx": "jsx", ".java": "java", ".kt": "kotlin",
+    ".rb": "ruby", ".php": "php", ".c": "c", ".h": "c", ".cpp": "cpp", ".cc": "cpp",
+    ".hpp": "cpp", ".cs": "csharp", ".swift": "swift", ".scala": "scala", ".zig": "zig",
+    ".lua": "lua", ".pl": "perl", ".sh": "bash", ".ex": "elixir", ".exs": "elixir",
+    ".erl": "erlang", ".hs": "haskell", ".clj": "clojure", ".vim": "vim",
+}
+
+
+def _ts_language_for(filename: str) -> str:
+    return _TS_LANG_BY_EXT.get(filename.rsplit(".", 1)[-1].lower(), "") or _TS_LANG_BY_EXT.get(
+        "." + filename.rsplit(".", 1)[-1].lower(), ""
+    )
+
+
 def extract(spec: EntitySpec, path: Path, rel_path: str):
     """Return list of (name, line, fields_dict). May raise ParseError → skipped."""
     text = path.read_text(encoding="utf-8", errors="replace")
@@ -231,6 +250,39 @@ def extract(spec: EntitySpec, path: Path, rel_path: str):
                 name = gd.get("name") or (m.group(1) if m.groups() else m.group(0))
                 fields = {k: v for k, v in gd.items() if k != "name" and v is not None}
                 out.append((name, i, fields))
+        return out
+    if spec.extractor == "tree_sitter":
+        from tree_sitter_language_pack import get_parser
+
+        lang = spec.language or _ts_language_for(path.name)
+        if not lang:
+            return []
+        try:
+            parser = get_parser(lang)
+        except Exception:
+            return []  # grammar not in the pack → skipped file (files.parse_status handles)
+        src = text.encode("utf-8")
+        tree = parser.parse(src)
+        wanted = tuple(spec.symbol_types) or None
+        out = []
+
+        def visit(node, scope=None):
+            name_node = node.child_by_field_name("name")
+            is_symbol = (
+                name_node is not None
+                and node.type.endswith(("_definition", "_declaration", "_item", "_specification", "_clause"))
+            )
+            if is_symbol and (wanted is None or node.type in wanted):
+                nm = src[name_node.start_byte : name_node.end_byte].decode("utf-8", "replace")
+                line = node.start_point[0] + 1
+                out.append((nm, line, {"type": node.type, **({"scope": scope} if scope else {})}))
+                new_scope = nm
+            else:
+                new_scope = scope
+            for ch in node.children:
+                visit(ch, new_scope)
+
+        visit(tree.root_node)
         return out
     if spec.extractor == "json_pointer":
         out = []

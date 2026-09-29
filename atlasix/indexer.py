@@ -91,7 +91,7 @@ class Indexer:
 
     def _ignored(self, p: Path) -> bool:
         rel = p.relative_to(self.root)
-        return any(part in (".git", "node_modules", "__pycache__") for part in rel.parts)
+        return any(part in (".git", "node_modules", "__pycache__", ".venv", "venv", "dist", ".atlas") for part in rel.parts)
 
     # ------------------------------------------------------------------ edges
 

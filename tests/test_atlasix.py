@@ -341,3 +341,27 @@ def test_ru_tokenizer():
     assert _tokenize("деплой")[0] == _tokenize("деплоить")[0]
     assert _tokenize("уведомление")[0] == _tokenize("уведомления")[0]
     assert _tokenize("docker build") == ["docker", "build"]
+
+
+def test_tree_sitter_extractor(tmp_path):
+    from atlasix.pack import EntitySpec, extract
+
+    py = tmp_path / "m.py"
+    py.write_text("def top():\n    pass\nclass A:\n    def meth(self):\n        pass\n", encoding="utf-8")
+    spec = EntitySpec("sym", {"files": ["**/*.py"], "extractor": "tree_sitter"})
+    got = extract(spec, py, "m.py")
+    names = {g[0] for g in got}
+    assert {"top", "A", "meth"} <= names
+    meth = next(g for g in got if g[0] == "meth")
+    assert meth[2]["scope"] == "A"
+
+    # utf-8 names survive byte offsets (regression: multibyte before def)
+    py.write_text("# —— комментарий ——\ndef русское_имя():\n    pass\n", encoding="utf-8")
+    got = extract(spec, py, "m.py")
+    assert got and got[0][0] == "русское_имя"
+
+    rs = tmp_path / "m.rs"
+    rs.write_text("struct Foo { x: i32 }\nimpl Foo {\n    fn bar(&self) {}\n}\n", encoding="utf-8")
+    spec_rs = EntitySpec("sym", {"files": ["**/*.rs"], "extractor": "tree_sitter"})
+    names_rs = {g[0] for g in extract(spec_rs, rs, "m.rs")}
+    assert {"Foo", "bar"} <= names_rs

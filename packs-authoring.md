@@ -19,6 +19,17 @@ This is a complete reference. Workflow first, syntax after.
    - entity counts sane? (`sqlite3 <db> "select kind,count(*) from entities group by kind"`)
    - resolved edges share healthy? unresolved refs should be REAL breakage, not pattern misses
    - `atlasix who-uses <anchor>` and `atlasix show <file> --resolved` must look right
+4b. Real code (python/rust/go/ts/java/...): use `extractor: tree_sitter` —
+   generic AST symbols across ~200 grammars, no per-language pack needed:
+
+   ```yaml
+   entity_types:
+     sym:
+       files: ["**/*.py", "**/*.rs", "**/*.go"]
+       extractor: tree_sitter
+       # optional: symbol_types: [function_definition, class_definition]
+   ```
+
 5. Add rules to `.atlas/rules/*.yaml`. `atlasix lint` — tune until signal/noise is good.
 6. Ship it wherever fits:
    - **private (recommended default)**: keep the pack in your own repo/dir and
@@ -62,6 +73,7 @@ duplicates:
 | `yaml_keys` | YAML | every top-level key | no `extends` magic |
 | `regex` | text | one entity per match | name = last non-None capture group (or full match); groups → data fields |
 | `line_symbols` | text | one entity per matching line | use named group `(?P<name>...)`; other groups → fields |
+| `tree_sitter` | source | AST symbols of ~200 languages | language auto-detected by extension (or `language:`); symbol = node with a `name` field and a `*_definition/_declaration/_item` type; fields: `type`, `scope` (enclosing symbol); filter with `symbol_types:` |
 | `json_pointer` | text | matching lines | line-oriented grep, fields empty |
 
 ### Resolvers
