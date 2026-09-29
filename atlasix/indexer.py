@@ -100,11 +100,14 @@ class Indexer:
 
     def _build_edges(self):
         rows = self._entities()
+        rows_all = rows
         by_name: dict[str, list[sqlite3.Row]] = {}
         for row in rows:
             by_name.setdefault(row["name"], []).append(row)
 
-        for ref in self.pack.refs:
+        file_level = [r for r in self.pack.refs if r.field == "raw_regex"]
+        name_level = [r for r in self.pack.refs if r.field != "raw_regex"]
+        for ref in file_level + name_level:
             for row in rows:
                 if row["kind"] != ref.entity:
                     continue
@@ -116,7 +119,7 @@ class Indexer:
                     for m in re.finditer(ref.pattern, text):
                         raw = m.group(0)
                         target = m.group(1) if m.groups() else raw
-                        self._add_edge(ref, row, target, raw, by_name)
+                        self._add_edge(ref, row, target, raw, by_name, rows_all)
                 elif ref.pattern:
                     data = json.loads(row["data_json"])
                     val = data.get(ref.field)
@@ -134,9 +137,29 @@ class Indexer:
                         continue
                     vals = val if isinstance(val, list) else [val]
                     for v in vals:
-                        self._add_edge(ref, row, str(v), str(v), by_name)
+                        self._add_edge(ref, row, str(v), str(v), by_name, rows_all)
 
-    def _add_edge(self, ref, src_row, target, raw, by_name):
+    def _include_closure(self, path: str, max_depth: int = 10) -> set:
+        """Files reachable from `path` via file-level include edges (incl. itself)."""
+        seen, frontier = {path}, [path]
+        for _ in range(max_depth):
+            nxt = []
+            for f in frontier:
+                for (dst_id,) in self.conn.execute(
+                    "SELECT dst_id FROM edges ed JOIN entities e ON e.id=ed.dst_id "
+                    "WHERE ed.src_id=(SELECT id FROM entities WHERE kind='file' AND path=?) "
+                    "AND e.kind='file'", (f,)
+                ):
+                    row = self.conn.execute("SELECT path FROM entities WHERE id=?", (dst_id,)).fetchone()
+                    if row and row["path"] not in seen:
+                        seen.add(row["path"])
+                        nxt.append(row["path"])
+            if not nxt:
+                break
+            frontier = nxt
+        return seen
+
+    def _add_edge(self, ref, src_row, target, raw, by_name, rows_all=None):
         dst = None
         if ref.resolve == "same_doc_dict":
             cands = [r for r in by_name.get(target, []) if r["path"] == src_row["path"]]
@@ -161,6 +184,18 @@ class Indexer:
                     (src_row["id"], r["id"], ref.rel, raw),
                 )
             return
+        elif ref.resolve == "include_aware":
+            files = self._include_closure(src_row["path"])
+            cands = [r for r in by_name.get(target, []) if r["path"] in files and r["kind"] == src_row["kind"]]
+            if cands:
+                dst = cands[0]["id"]
+        elif ref.resolve == "same_doc_anchor":
+            cands = []
+            for r in rows_all:
+                if r["path"] == src_row["path"] and json.loads(r["data_json"]).get("anchor") == target:
+                    cands.append(r)
+            if cands:
+                dst = cands[0]["id"]
         elif ref.resolve == "entity_name":
             cands = [r for r in by_name.get(target, []) if r["kind"] == ref.to]
             if cands:

@@ -283,3 +283,61 @@ def test_mcp_server_tools(tmp_path):
         else:
             os.environ.pop("ATLASIX_HOME", None)
     assert "job:build-dev" in out
+
+
+def test_strict_pack_validation():
+    from atlasix.pack import Pack, PackError
+
+    with pytest.raises(PackError, match="uses_var"):
+        Pack({"version": 1, "uses_var": {}}, "x.yaml")
+    with pytest.raises(PackError, match="fil"):
+        Pack({"version": 1, "entity_types": {"job": {"fil": "x"}}}, "x.yaml")
+    with pytest.raises(PackError, match="bogus"):
+        Pack({"version": 1, "references": {"r": {"from": {"entity": "j", "field": "f"}, "resolve": "bogus"}}}, "x.yaml")
+
+
+def test_needs_and_include_aware(workdir):
+    # add needs to deploy job → edge job→job resolved in same file
+    p = workdir / "pipelines" / "app" / ".gitlab-ci.yml"
+    p.write_text(p.read_text().replace("deploy:", "deployx:"), encoding="utf-8")
+    text = p.read_text(encoding="utf-8") + "\njob-b:\n  stage: build\n  needs: [\"job-b2\"]\n  script: [\"echo x\"]\njob-b2:\n  stage: build\n  script: [\"echo y\"]\n"
+    p.write_text(text, encoding="utf-8")
+    run("pack", "import", "gitlab-ci", "--force", cwd=workdir)
+    run("build", "--no-vectors", cwd=workdir)
+    import sqlite3
+
+    conn = sqlite3.connect(workdir / ".atlas" / "index.db")
+    n = conn.execute(
+        "SELECT count(*) FROM edges ed JOIN entities a ON a.id=ed.src_id JOIN entities b ON b.id=ed.dst_id "
+        "WHERE ed.rel='needs' AND a.name='job-b' AND b.name='job-b2' AND b.path=a.path"
+    ).fetchone()[0]
+    assert n == 1
+
+
+def test_yaml_anchor_merge(tmp_path):
+    import shutil as _sh
+
+    d = tmp_path / "repo"
+    d.mkdir()
+    (d / "a.yml").write_text(
+        ".base: &base\n  stage: build\nreal:\n  <<: *base\n  script: [\"echo hi\"]\n", encoding="utf-8"
+    )
+    home = tmp_path / "home"
+    run("init", "--no-agents-md", cwd=d, home=home)
+    run("pack", "import", "gitlab-ci", "--force", cwd=d, home=home)
+    run("build", "--no-vectors", cwd=d, home=home)
+    import sqlite3
+
+    db = next((home / "repos").glob("*/index.db"))
+    conn = sqlite3.connect(db)
+    anchored = conn.execute("SELECT count(*) FROM entities WHERE name='.base' AND data_json LIKE '%anchor%'").fetchone()[0]
+    merged = conn.execute("SELECT count(*) FROM edges WHERE rel='merges' AND dst_id IS NOT NULL").fetchone()[0]
+    assert anchored == 1 and merged == 1
+
+
+def test_ru_tokenizer():
+    from atlasix.cli import _tokenize
+
+    assert _tokenize("деплой")[0] == _tokenize("деплоить")[0]
+    assert _tokenize("уведомление")[0] == _tokenize("уведомления")[0]
+    assert _tokenize("docker build") == ["docker", "build"]

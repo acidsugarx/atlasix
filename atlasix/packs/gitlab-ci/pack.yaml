@@ -1,5 +1,5 @@
 version: 1
-# Built-in atlasix pack: GitLab CI monorepo (jobs, extends/includes, env vars, nushell modules).
+# Built-in atlasix pack: GitLab CI monorepo (jobs, extends/includes, needs, env vars, nushell modules).
 # Import: atlasix pack import gitlab-ci
 entity_types:
   job:
@@ -13,17 +13,30 @@ entity_types:
   nu_module:
     files: ["**/*.nu"]
     extractor: line_symbols
-    pattern: '^\s*(export\s+)?def\s+(?P<name>[\w-]+)'
+    pattern: '^\s*export def\s+"?(?P<name>[\w][\w -]*)"?\s*[\[(]'
+  nu_use:
+    files: ["**/*.nu"]
+    extractor: line_symbols
+    pattern: '^\s*use\s+(?P<name>\S+)'
 references:
   extends:
     from: {entity: job, field: extends}
-    resolve: global_name        # same-file AND included lib blocks (GitLab resolves cross-file via include)
+    resolve: include_aware     # GitLab semantics: the target included into THIS pipeline
+  merges:
+    from: {entity: job, field: merges}
+    resolve: same_doc_anchor   # YAML merge keys (<<: *anchor) → anchored job in same file
+  needs:
+    from: {entity: job, field: needs, pattern: '"([\w./:-]+)"'}
+    resolve: include_aware
   includes:
     from: {entity: file, field: raw_regex, pattern: "[\"'](/?[A-Za-z0-9_./-]+\\.ya?ml)[\"']"}
     resolve: repo_path
   includes_ref:
     from: {entity: file, field: raw_regex, pattern: '(\S+\.ya?ml)@(\S+)'}
     resolve: repo_path
+  rules_changes:
+    from: {entity: job, field: rules, pattern: '[A-Za-z0-9_][\w./-]*/[\w.*-]*'}
+    resolve: none             # raw path/glob facts kept for who-uses
   uses_var:
     from: {entity: job, field: script, pattern: '\$\{?([A-Z][A-Z0-9_]+)\}?'}
     resolve: entity_name

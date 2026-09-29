@@ -329,6 +329,33 @@ def cmd_who_uses(args):
         frontier = nxt
 
 
+_RU_SUFFIXES = sorted(
+    ["иями", "ями", "ами", "иями", "ов", "ев", "ий", "ых", "их", "ах", "ях", "ой", "ей",
+     "ый", "ая", "яя", "ое", "ее", "ые", "ие", "ам", "ям", "ую", "юю", "ем", "ом",
+     "ить", "ать", "ять", "еть", "уть", "ешь", "ишь", "ают", "яют", "ует", "ишь",
+     "у", "ю", "а", "я", "ы", "и", "е", "ь", "о"],
+    key=len, reverse=True,
+)
+
+
+def _tokenize(text: str) -> list:
+    """Lowercase tokens with a light RU stemmer (Porter-lite suffix stripping)."""
+    out = []
+    for tok in text.lower().split():
+        t = tok.strip(".,:;\"'()[]{}<>=|`!?/*")
+        if not t:
+            continue
+        if len(t) > 5 and "а" <= t[-1] <= "я":
+            for suf in _RU_SUFFIXES:
+                if len(t) - len(suf) >= 5 and t.endswith(suf):
+                    t = t[: -len(suf)]
+                    break
+            if len(t) >= 6 and (t[-1] in "аеёиоуыэюяй"):
+                t = t[:-1]  # unify trunk: уведомлени/уведомлен, депло/деплой
+        out.append(t)
+    return out
+
+
 def cmd_search(args):
     conn = _open_db(_root())
     rows = conn.execute("SELECT id,ref_table,ref_id,text,vec FROM chunks").fetchall()
@@ -341,16 +368,18 @@ def cmd_search(args):
     try:
         from rank_bm25 import BM25Okapi
 
-        bm25 = BM25Okapi([t.lower().split() for t in texts])
-        bm = bm25.get_scores(args.text.lower().split())
+        bm25 = BM25Okapi([_tokenize(t) for t in texts])
+        bm = bm25.get_scores(_tokenize(args.text))
         order = [i for i in range(len(rows)) if bm[i] > 0]
         order.sort(key=lambda i: -bm[i])
         order = order[: 5 * args.top]
         rrf = {rows[i]["id"]: 0.0 for i in order}
         for rank, i in enumerate(order):
-            rrf[rows[i]["id"]] += 1.0 / (60 + rank + 1)
+            boost = 1.25 if rows[i]["ref_table"] == "entities" else 1.0
+            rrf[rows[i]["id"]] += boost / (60 + rank + 1)
     except Exception:
         rrf = {}
+    ref_kind = {r["id"]: r["ref_table"] for r in rows}
     # vectors
     if schema.VEC_OK and rows and rows[0]["vec"] is not None:
         try:
@@ -374,7 +403,8 @@ def cmd_search(args):
             sims = M @ qn
             order = np.argsort(-sims)[: 5 * args.top]
             for rank, i in enumerate(order):
-                rrf[ids[i]] = rrf.get(ids[i], 0.0) + 1.0 / (60 + rank + 1)
+                boost = 1.25 if ref_kind.get(ids[i]) == "entities" else 1.0
+                rrf[ids[i]] = rrf.get(ids[i], 0.0) + boost / (60 + rank + 1)
         except Exception:
             pass
     top = sorted(rrf.items(), key=lambda kv: -kv[1])[: args.top]

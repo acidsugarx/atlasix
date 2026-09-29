@@ -9,7 +9,7 @@ from pathlib import Path
 from ruamel.yaml import YAML
 
 EXTRACTORS = {"yaml_jobs", "yaml_keys", "regex", "json_pointer", "line_symbols"}
-RESOLVERS = {"same_doc_dict", "repo_path", "entity_name", "global_name", "none"}
+RESOLVERS = {"same_doc_dict", "repo_path", "entity_name", "global_name", "include_aware", "same_doc_anchor", "none"}
 
 
 class PackError(Exception):
@@ -17,9 +17,14 @@ class PackError(Exception):
 
 
 class EntitySpec:
+    KEYS = {"files", "extractor", "fields", "pattern", "pointer"}
+
     def __init__(self, kind, cfg):
         if not isinstance(cfg, dict):
             raise PackError(f"entity_types.{kind}: expected mapping")
+        unknown = set(cfg) - self.KEYS
+        if unknown:
+            raise PackError(f"entity_types.{kind}: unknown key(s) {sorted(unknown)}; allowed: {sorted(self.KEYS)}")
         self.kind = kind
         self.files = cfg.get("files")
         if not self.files or not isinstance(self.files, list):
@@ -40,11 +45,20 @@ class EntitySpec:
 
 
 class RefSpec:
+    KEYS = {"from", "resolve", "to"}
+
     def __init__(self, rel, cfg):
         self.rel = rel
         if not isinstance(cfg, dict):
             raise PackError(f"references.{rel}: expected mapping")
+        unknown = set(cfg) - self.KEYS
+        if unknown:
+            raise PackError(f"references.{rel}: unknown key(s) {sorted(unknown)}; allowed: {sorted(self.KEYS)}")
         frm = cfg.get("from") or {}
+        if isinstance(frm, dict):
+            bad = set(frm) - {"entity", "field", "pattern"}
+            if bad:
+                raise PackError(f"references.{rel}.from: unknown key(s) {sorted(bad)}; allowed: ['entity', 'field', 'pattern']")
         self.entity = frm.get("entity")
         self.field = frm.get("field")
         self.pattern = frm.get("pattern")
@@ -72,9 +86,14 @@ class Pack:
         self.dup_threshold = 0.85
         self._load(data)
 
+    ROOT_KEYS = {"version", "entity_types", "references", "text_units", "duplicates"}
+
     def _load(self, data):
         if not isinstance(data, dict):
             raise PackError("pack root must be a mapping")
+        unknown = set(data) - self.ROOT_KEYS
+        if unknown:
+            raise PackError(f"{self.path}: unknown top-level key(s) {sorted(unknown)}; allowed: {sorted(self.ROOT_KEYS)}")
         version = data.get("version")
         if version != 1:
             raise PackError(f"unsupported pack version {version!r} (expected 1)")
@@ -89,12 +108,16 @@ class Pack:
             except PackError as e:
                 raise PackError(f"{self.path}: {e}") from None
         tu = data.get("text_units") or {}
+        if set(tu) - {"unit"}:
+            raise PackError(f"{self.path}: text_units: unknown key(s) {sorted(set(tu) - {'unit'})}")
         unit = tu.get("unit") or {}
         if unit:
             if not unit.get("entity") or not unit.get("field"):
                 raise PackError("text_units.unit needs 'entity' and 'field'")
             self.text_unit = (unit["entity"], unit["field"])
         dup = data.get("duplicates") or {}
+        if set(dup) - {"min_lines", "threshold"}:
+            raise PackError(f"{self.path}: duplicates: unknown key(s) {sorted(set(dup) - {'min_lines', 'threshold'})}")
         self.dup_min_lines = int(dup.get("min_lines", 5))
         self.dup_threshold = float(dup.get("threshold", 0.85))
 
@@ -103,7 +126,13 @@ class Pack:
         p = rel_path.replace("\\", "/")
         for spec in self.entity_specs.values():
             for pat in spec.files:
-                if fnmatch.fnmatch(p, pat) or fnmatch.fnmatch(p, "*/" + pat):
+                base = pat.replace("**/", "", 1) if pat.startswith("**/") else pat
+                if (
+                    fnmatch.fnmatch(p, pat)
+                    or fnmatch.fnmatch(p, "*/" + pat)
+                    or fnmatch.fnmatch(p, base)
+                    or fnmatch.fnmatch(p, "*/" + base)
+                ):
                     yield spec
 
 
@@ -160,6 +189,17 @@ def extract(spec: EntitySpec, path: Path, rel_path: str):
                     ext = value.get("extends")
                     if ext is not None:
                         fields["extends"] = ext
+                    anchor = getattr(value, "anchor", None)
+                    if anchor is not None and getattr(anchor, "value", None):
+                        fields["anchor"] = anchor.value
+                    merges = getattr(value, "merge", None)
+                    if merges:
+                        names = []
+                        for item in merges:
+                            src = item[1] if isinstance(item, tuple) and len(item) > 1 else item
+                            a = getattr(src, "anchor", None)
+                            names.append(getattr(a, "value", None) or str(src)[:40])
+                        fields["merges"] = [n for n in names if n]
                 for f in spec.fields:
                     v = _extract_field(value, f)
                     if v is not None:

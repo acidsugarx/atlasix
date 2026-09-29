@@ -70,6 +70,8 @@ duplicates:
 |---|---|---|
 | `same_doc_dict` | entity with same `name` in the same file | name absent locally |
 | `global_name` | edges to EVERY entity with that name (any file) | name absent anywhere — true broken ref |
+| `include_aware` | entity with that name in the SAME file or any file reachable via include edges (GitLab/CI semantics: only what this pipeline actually includes) | target not included here — meaningful fact |
+| `same_doc_anchor` | entity in same file whose data field `anchor` == ref (YAML `&anchor`/`<<: *merge` support) | no such anchor |
 | `repo_path` | file entity at that repo path (strips `./`, `/`, `path@ref`) | path not in repo |
 | `entity_name` | entity of kind `to` with that name | e.g. env-var not documented |
 | `none` | never resolves; raw_ref only | always (use for pure "mentions") |
@@ -79,7 +81,11 @@ decide whether it matters.
 
 Pattern-based references: when `pattern` is set on a data-field reference, the
 field's text is scanned and each match becomes an edge (target = last group) —
-that's how `uses_var: $\{?([A-Z_]+)\}?` works.
+that's how `uses_var: $\{?([A-Z_]+)\}?`, `needs: '"([\w./:-]+)"'` and
+`rules_changes` path globs work.
+
+**File globs**: `**/*.yml` also matches files at the repo root (`a.yml`),
+not only in subdirectories.
 
 ## Rules reference
 
