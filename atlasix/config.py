@@ -122,7 +122,12 @@ def embedding_model() -> tuple[str, str | None]:
     """(model_name_or_dir, cache_dir) resolving settings."""
     from . import schema
 
-    apply_hf_env()
+    # fastembed/hf-hub store cache files as symlinks into blobs/; onnxruntime
+ # rejects multi-file ONNX models (external *.onnx_data) resolved through them.
+    _materialize_cache(CACHE_DIR if not get_effective("cache_dir") else Path(get_effective("cache_dir")))
+    # multi-file ONNX models (e.g. multilingual-e5-large) break onnxruntime's
+    # external-data path validation when hf-hub stores blobs as symlinks
+    os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS", "1")
     model_dir = get_effective("model_dir")
     if model_dir and Path(model_dir).is_dir():
         return model_dir, None  # local ONNX dir → no cache needed
@@ -130,3 +135,29 @@ def embedding_model() -> tuple[str, str | None]:
     cache = get_effective("cache_dir") or str(CACHE_DIR)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     return model, cache
+
+
+def _materialize_cache(cache: Path):
+    """Replace symlinks inside model snapshots with hardlinks (or copies) to their
+    targets, so onnxruntime can load multi-file ONNX models from the snapshot dir."""
+    import shutil
+
+    models_root = cache / "models--*" if cache.is_dir() else None
+    if models_root is None:
+        return
+    for snapshot in cache.glob("models--*/snapshots/*"):
+        if not snapshot.is_dir():
+            continue
+        for f in snapshot.iterdir():
+            if not f.is_symlink():
+                continue
+            target = f.resolve()
+            if not target.is_file():
+                continue
+            tmp = f.with_name(f.name + ".atlasix-real")
+            try:
+                os.link(target, tmp)
+            except OSError:
+                shutil.copyfile(target, tmp)
+            f.unlink()
+            tmp.rename(f)

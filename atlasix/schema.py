@@ -43,8 +43,20 @@ CREATE TABLE IF NOT EXISTS chunks(
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 """
 MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"  # multilingual, 384-dim, local ONNX
-VEC_DIM = 384
+VEC_DIM = 384  # default; vec_chunks is (re)created with the real dim of the chosen model
 VEC_DDL = f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[{VEC_DIM}]);"
+
+
+def ensure_vec_table(conn: sqlite3.Connection, dim: int) -> bool:
+    """(Re)create vec_chunks with the requested dim. Returns success."""
+    try:
+        conn.execute("DROP TABLE IF EXISTS vec_chunks")
+        conn.execute(
+            f"CREATE VIRTUAL TABLE vec_chunks USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[{dim}]);"
+        )
+        return True
+    except Exception:
+        return False
 
 
 def connect(db_path, *, for_write: bool = False) -> sqlite3.Connection:

@@ -482,6 +482,26 @@ def cmd_pack(args):
         print(f"installed {f}")
     print("next: atlasix build && atlasix lint")
 
+
+def cmd_update(args):
+    import os
+    import subprocess
+    import shutil
+
+    uv = shutil.which("uv")
+    if uv is None:
+        print("uv not found — install: https://docs.astral.sh/uv/", file=sys.stderr)
+        sys.exit(2)
+    src = os.environ.get("ATLASIX_REPO", "https://github.com/acidsugarx/atlasix")
+    src = src if os.path.isdir(src) else f"git+{src}"
+    from . import __version__
+
+    print(f"atlasix {__version__} → updating from {src}")
+    r = subprocess.run([uv, "tool", "install", "--force", src])
+    if r.returncode != 0:
+        sys.exit(r.returncode)
+    subprocess.run([sys.executable, "-c", "from atlasix import __version__; print('now:', __version__)"])
+
 def main(argv=None):
     try:
         import signal
@@ -490,8 +510,10 @@ def main(argv=None):
     except (ImportError, AttributeError, ValueError):
         pass  # windows
     ap = argparse.ArgumentParser(prog="atlasix", description="structural repo index for LLM agents")
+    ap.add_argument("--version", action="version", version=f"%(prog)s {__import__('atlasix').__version__}")
     sub = ap.add_subparsers(dest="cmd", required=True)
     ip = sub.add_parser("init")
+    sub.add_parser("update").set_defaults(fn=cmd_update)
     ip.add_argument("--local", action="store_true", help="create .atlas/ inside the repo instead of ~/.atlasix/repos/")
     ip.set_defaults(fn=cmd_init)
     b = sub.add_parser("build")

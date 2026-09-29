@@ -283,6 +283,9 @@ class Indexer:
             ids = [r[0] for r in self.conn.execute("SELECT id FROM chunks").fetchall()]
             texts = [r[0] for r in self.conn.execute("SELECT text FROM chunks").fetchall()]
             vecs = list(model.embed(texts))
+            if vecs and not schema.ensure_vec_table(self.conn, len(vecs[0])):
+                self.conn.commit()
+                return False
             for cid, v in zip(ids, vecs):
                 blob = struct.pack(f"{len(v)}f", *v.tolist() if hasattr(v, "tolist") else v)
                 self.conn.execute("UPDATE chunks SET vec=? WHERE id=?", (blob, cid))
