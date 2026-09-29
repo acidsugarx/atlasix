@@ -22,6 +22,13 @@ def available() -> list[dict]:
     return out
 
 
+def get(name: str) -> Path:
+    d = PACKS_DIR / name
+    if not (d.is_dir() and (d / "pack.yaml").exists()):
+        raise KeyError(f"unknown pack {name!r}; available: {[p['name'] for p in available()]}")
+    return d
+
+
 def resolve_source(name: str, frm: str | None = None) -> Path:
     """Pack source dir: built-in registry, local dir, or git URL (cloned to temp)."""
     if not frm:

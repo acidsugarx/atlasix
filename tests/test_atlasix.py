@@ -223,3 +223,19 @@ def test_repos_list_prune(tmp_path):
     assert len(list((home / "repos").iterdir())) == 1
     # live state dir untouched
     assert run("build", "--no-vectors", cwd=d, home=home).returncode == 0
+
+
+def test_pack_import_from_dir(tmp_path):
+    import shutil as _sh
+
+    from atlasix import packs
+
+    src = tmp_path / "corp" / "mycorp"
+    _sh.copytree(packs.PACKS_DIR / "gitlab-ci", src)
+    d = tmp_path / "repo"
+    _sh.copytree(FIXTURE, d)
+    home = tmp_path / "home"
+    assert run("init", cwd=d, home=home).returncode == 0
+    r = run("pack", "import", "mycorp", "--from", str(tmp_path / "corp"), cwd=d, home=home)
+    assert r.returncode == 0, r.stderr
+    assert run("build", "--no-vectors", cwd=d, home=home).returncode == 0
