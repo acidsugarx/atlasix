@@ -269,8 +269,10 @@ class Indexer:
         try:
             from fastembed import TextEmbedding
 
-            
-            model = TextEmbedding(schema.MODEL)
+            from . import config
+
+            name, cache_dir = config.embedding_model()
+            model = TextEmbedding(name, cache_dir=cache_dir) if cache_dir else TextEmbedding(name)
             ids = [r[0] for r in self.conn.execute("SELECT id FROM chunks").fetchall()]
             texts = [r[0] for r in self.conn.execute("SELECT text FROM chunks").fetchall()]
             vecs = list(model.embed(texts))

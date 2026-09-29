@@ -126,3 +126,29 @@ def test_profile(workdir):
     run("build", "--no-vectors", cwd=workdir)
     out = run("profile", cwd=workdir).stdout
     assert "== entity kinds ==" in out
+
+
+def test_config_roundtrip(monkeypatch, tmp_path):
+    from atlasix import config
+
+    home = tmp_path / "atlasix-home"
+    monkeypatch.setattr(config, "ATLASIX_HOME", home)
+    monkeypatch.setattr(config, "SETTINGS_PATH", home / "settings.yaml")
+    monkeypatch.setattr(config, "KEY_PATH", home / "secret.key")
+    monkeypatch.setattr(config, "CACHE_DIR", home / "cache")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACEHUB_API_TOKEN", raising=False)
+    monkeypatch.delenv("ATLASIX_HF_TOKEN", raising=False)
+
+    config.set_value("hf_token", "hf-secret-123")
+    stored = config.load_settings()["hf_token"]
+    assert stored.startswith("enc:")
+    assert "hf-secret-123" not in stored
+    assert config.get_effective("hf_token") == "hf-secret-123"
+    assert config.get_effective("model") == ""  # default → schema.MODEL at call time
+    # tamper detection
+    import pytest as _pytest
+
+    config.KEY_PATH.write_bytes(b"\x00" * 32)
+    with _pytest.raises(ValueError):
+        config.get_effective("hf_token")

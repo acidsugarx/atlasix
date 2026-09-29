@@ -263,7 +263,11 @@ def cmd_search(args):
             import numpy as np
             from fastembed import TextEmbedding
 
-            qv = list(TextEmbedding(schema.MODEL).embed([args.text]))[0]
+            from . import config
+
+            name, cache_dir = config.embedding_model()
+            enc = TextEmbedding(name, cache_dir=cache_dir) if cache_dir else TextEmbedding(name)
+            qv = list(enc.embed([args.text]))[0]
             qv = np.array(qv if not hasattr(qv, "tolist") else qv)
             mats, ids = [], []
             for r in rows:
@@ -373,6 +377,28 @@ def cmd_bootstrap_hint(args):
     print(HINT)
 
 
+def cmd_config(args):
+    from . import config
+
+    if args.config_cmd == "set":
+        try:
+            config.set_value(args.key, args.value)
+        except KeyError as e:
+            print(e, file=sys.stderr)
+            sys.exit(2)
+        shown = "********" if args.key == "hf_token" and args.value else args.value
+        print(f"{args.key} = {shown}  (stored in {config.SETTINGS_PATH})")
+    elif args.config_cmd == "get":
+        print(config.get_effective(args.key) or "")
+    else:  # list
+        cfg = config.load_settings()
+        for k in sorted(cfg):
+            v = cfg[k]
+            if k == "hf_token" and v:
+                v = f"******** ({'encrypted' if v.startswith('enc:') else 'PLAINTEXT!'})"
+            print(f"{k}: {v or '(default)'}")
+
+
 def main(argv=None):
     try:
         import signal
@@ -387,6 +413,15 @@ def main(argv=None):
     b.add_argument("--no-vectors", action="store_true")
     b.add_argument("--json", action="store_true")
     b.set_defaults(fn=cmd_build)
+    c = sub.add_parser("config")
+    csub = c.add_subparsers(dest="config_cmd", required=True)
+    cs = csub.add_parser("set")
+    cs.add_argument("key")
+    cs.add_argument("value")
+    cg = csub.add_parser("get")
+    cg.add_argument("key")
+    csub.add_parser("list")
+    c.set_defaults(fn=cmd_config, config_cmd="list")
     sub.add_parser("profile").set_defaults(fn=cmd_profile)
     s = sub.add_parser("show")
     s.add_argument("path")

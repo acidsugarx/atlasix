@@ -24,4 +24,12 @@ $ atlasix graph .ansible_deploy --depth 2 --dot
 $ atlasix lint
 ```
 
+User state in `~/.atlasix/` (settings, model cache, encrypted HF token):
+
+```console
+$ atlasix config set hf_token hf_...   # stored encrypted (secret.key, 0600)
+$ atlasix config set model_dir /path/to/local/onnx   # fully offline embeddings
+$ atlasix config list
+```
+
 Agent workflow: see `SKILL.md`. Architecture rules: see `AGENTS.md`.
