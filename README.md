@@ -9,6 +9,8 @@ declarative lint, hybrid semantic search, graph analysis.
   via `atlasix bootstrap-hint`.
 - **Deterministic facts**: `entities / edges / text_units / chunks` in
   `.atlas/index.db` (SQLite + sqlite-vec).
+- **No repo pollution by default** — pack/index/rules live in `~/.atlasix/repos/<repo>-<hash>/`;
+  a committed repo `.atlas/` (e.g. via `init --local` + `pack import`) always wins.
 - **Degradable layers**: no fastembed/sqlite-vec/networkx? Search falls back to
   BM25, build works, nothing crashes.
 - Cross-platform: Windows/Linux/macOS, wheels only.

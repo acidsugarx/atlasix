@@ -47,9 +47,15 @@ RULES = {
 }
 
 
-def run(*args, cwd):
+def run(*args, cwd, home=None):
+    import os
+
+    env = dict(os.environ)
+    env.pop("ATLASIX_HOME", None)
+    if home:
+        env["ATLASIX_HOME"] = str(home)
     return subprocess.run(
-        [sys.executable, "-m", "atlasix", *args], cwd=cwd, capture_output=True, text=True
+        [sys.executable, "-m", "atlasix", *args], cwd=cwd, capture_output=True, text=True, env=env
     )
 
 
@@ -111,15 +117,33 @@ def test_graph_cycles_no_hang(workdir):
     assert r.returncode == 0
 
 
-def test_empty_pack(tmp_path):
+def test_empty_pack_central_by_default(tmp_path):
     d = tmp_path / "empty"
     d.mkdir()
     (d / "a.txt").write_text("hi")
-    assert run("init", cwd=d).returncode == 0
-    r = run("build", "--no-vectors", cwd=d)
+    home = tmp_path / "atlasix-home"
+    assert run("init", cwd=d, home=home).returncode == 0
+    assert not (d / ".atlas").exists()  # no repo pollution
+    r = run("build", "--no-vectors", cwd=d, home=home)
     assert r.returncode == 0
-    conn = sqlite3.connect(d / ".atlas" / "index.db")
+    repos = list((home / "repos").iterdir())
+    assert len(repos) == 1
+    conn = sqlite3.connect(repos[0] / "index.db")
     assert conn.execute("SELECT count(*) FROM files").fetchone()[0] == 1
+
+
+def test_init_local_flag(tmp_path):
+    d = tmp_path / "empty"
+    d.mkdir()
+    (d / "a.txt").write_text("hi")
+    home = tmp_path / "atlasix-home"
+    assert run("init", "--local", cwd=d, home=home).returncode == 0
+    assert (d / ".atlas" / "pack.yaml").exists()
+    assert not (home / "repos").exists()
+    # once .atlas exists, all commands use it
+    r = run("build", "--no-vectors", cwd=d, home=home)
+    assert r.returncode == 0
+    assert (d / ".atlas" / "index.db").exists()
 
 
 def test_profile(workdir):

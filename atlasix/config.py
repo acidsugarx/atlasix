@@ -10,7 +10,7 @@ from pathlib import Path
 
 from ruamel.yaml import YAML
 
-ATLASIX_HOME = Path.home() / ".atlasix"
+ATLASIX_HOME = Path(os.environ.get("ATLASIX_HOME", str(Path.home() / ".atlasix")))
 SETTINGS_PATH = ATLASIX_HOME / "settings.yaml"
 CACHE_DIR = ATLASIX_HOME / "cache"
 KEY_PATH = ATLASIX_HOME / "secret.key"

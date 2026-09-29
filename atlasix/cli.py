@@ -72,14 +72,28 @@ def _root() -> Path:
     return Path.cwd()
 
 
-def _atlas_dir(root: Path) -> Path:
-    return root / ".atlas"
+def _atlas_dir(root: Path, create: bool = False) -> Path:
+    """Repo `.atlas/` if present, else per-repo dir under ~/.atlasix/repos/ (no repo pollution)."""
+    local = root / ".atlas"
+    if local.exists():
+        return local
+    import hashlib
+    import re as _re
+
+    from . import config
+
+    slug = _re.sub(r"[^A-Za-z0-9._-]+", "-", root.resolve().name) or "repo"
+    digest = hashlib.sha256(str(root.resolve()).encode("utf-8")).hexdigest()[:8]
+    d = config.ATLASIX_HOME / "repos" / f"{slug}-{digest}"
+    if create:
+        d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 def _open_db(root: Path):
     db = _atlas_dir(root) / "index.db"
     if not db.exists():
-        print("no .atlas/index.db — run `atlasix build` first", file=sys.stderr)
+        print("no index.db (repo .atlas/ or ~/.atlasix/repos/) — run `atlasix build` first", file=sys.stderr)
         sys.exit(2)
     conn = schema.connect(db)
     schema.load_vec(conn)
@@ -101,21 +115,25 @@ def _load_pack(root: Path) -> packmod.Pack:
 
 def cmd_init(args):
     root = _root()
-    d = _atlas_dir(root)
+    if args.local:
+        d = root / ".atlas"
+    else:
+        d = _atlas_dir(root, create=True)
     (d / "rules").mkdir(parents=True, exist_ok=True)
     pack = d / "pack.yaml"
     if not pack.exists():
         pack.write_text(DEFAULT_PACK, encoding="utf-8")
-        print("wrote .atlas/pack.yaml (empty pack)")
-    gi = d / ".gitignore"
-    gi.write_text("index.db\nindex.db-wal\nindex.db-shm\n", encoding="utf-8")
+        print(f"wrote {pack} (empty pack)")
+    if d == root / ".atlas":
+        (d / ".gitignore").write_text("index.db\nindex.db-wal\nindex.db-shm\n", encoding="utf-8")
     print(f"initialized {d}")
 
 
 def cmd_build(args):
     root = _root()
+    d = _atlas_dir(root, create=True)
     pk = _load_pack(root)
-    ix = Indexer(root, pk, with_vectors=not args.no_vectors)
+    ix = Indexer(root, pk, with_vectors=not args.no_vectors, atlas_dir=d)
     stats = ix.build()
     if args.json:
         print(json.dumps(stats, ensure_ascii=False))
@@ -413,7 +431,7 @@ def cmd_pack(args):
     # import
     root = _root()
     try:
-        written = packs.install(args.name, _atlas_dir(root), force=args.force)
+        written = packs.install(args.name, _atlas_dir(root, create=True), force=args.force)
     except KeyError as e:
         print(e, file=sys.stderr)
         sys.exit(2)
@@ -433,7 +451,9 @@ def main(argv=None):
         pass  # windows
     ap = argparse.ArgumentParser(prog="atlasix", description="structural repo index for LLM agents")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("init").set_defaults(fn=cmd_init)
+    ip = sub.add_parser("init")
+    ip.add_argument("--local", action="store_true", help="create .atlas/ inside the repo instead of ~/.atlasix/repos/")
+    ip.set_defaults(fn=cmd_init)
     b = sub.add_parser("build")
     b.add_argument("--no-vectors", action="store_true")
     b.add_argument("--json", action="store_true")

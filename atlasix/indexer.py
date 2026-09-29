@@ -31,11 +31,11 @@ def _shingles(norm: str, k: int = 3) -> set[tuple[str, ...]]:
 
 
 class Indexer:
-    def __init__(self, root: Path, pk: packmod.Pack, with_vectors: bool = True):
+    def __init__(self, root: Path, pk: packmod.Pack, with_vectors: bool = True, atlas_dir: Path | None = None):
         self.root = root
         self.pack = pk
         self.with_vectors = with_vectors
-        self.db_path = root / ".atlas" / "index.db"
+        self.db_path = (atlas_dir if atlas_dir is not None else root / ".atlas") / "index.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = schema.rebuild(self.db_path)
         self._entity_by_file: dict[str, list[int]] = {}
