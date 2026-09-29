@@ -2,7 +2,7 @@
 # atlasix installer (POSIX). Alternative for agents: read AGENT.md at the repo root.
 set -eu
 
-REPO_URL="${ATLASIX_REPO:-https://github.com/USER/atlasix}"
+REPO_URL="${ATLASIX_REPO:-https://github.com/acidsugarx/atlasix}"
 
 have() { command -v "$1" >/dev/null 2>&1; }
 

@@ -10,11 +10,11 @@ top to bottom. No human input required.
 **Path A — persistent CLI (preferred, reusable across sessions):**
 
 ```bash
-uv tool install --force git+https://github.com/USER/atlasix
+uv tool install --force git+https://github.com/acidsugarx/atlasix
 ```
 
 **Path B — zero-install (nothing left on the machine):** prefix every command
-below with `uvx --from git+https://github.com/USER/atlasix` instead of
+below with `uvx --from git+https://github.com/acidsugarx/atlasix` instead of
 `atlasix`.
 
 Prerequisite for both: `uv`. If missing, install it first:

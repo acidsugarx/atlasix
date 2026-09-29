@@ -15,6 +15,29 @@ declarative lint, hybrid semantic search, graph analysis.
   BM25, build works, nothing crashes.
 - Cross-platform: Windows/Linux/macOS, wheels only.
 
+## Install
+
+```console
+$ uv tool install git+https://github.com/acidsugarx/atlasix   # persistent CLI
+# or zero-install one-shot:
+$ uvx --from git+https://github.com/acidsugarx/atlasix atlasix init
+```
+
+Requires only `uv` (agents install it themselves if missing).
+
+### Give it to your agent (any harness: oh-my-pi, opencode, Claude Code, Cursor)
+
+Paste this prompt — the agent reads the instruction and does everything itself
+(install, pack import, build, then uses `who-uses`/`duplicates`/`search`/`lint`):
+
+```text
+Follow https://raw.githubusercontent.com/acidsugarx/atlasix/main/AGENT.md and
+index this repository. Use atlasix for orientation before any change and run
+`atlasix build && atlasix lint` after refactoring as the acceptance check.
+```
+
+Shell one-liner alternative: `curl -LsSf https://raw.githubusercontent.com/acidsugarx/atlasix/main/install.sh | sh`
+
 ```console
 $ atlasix init && atlasix build
 $ atlasix profile          # domain-free summary → input for pack authoring
