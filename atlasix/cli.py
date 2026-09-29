@@ -109,7 +109,7 @@ def _open_db(root: Path):
 def _load_pack(root: Path) -> packmod.Pack:
     p = _atlas_dir(root) / "pack.yaml"
     if not p.exists():
-        return packmod.Pack({}, p)
+        return packmod.Pack({"version": 1}, p)
     try:
         return packmod.load_pack(p)
     except packmod.PackError as e:
@@ -519,6 +519,12 @@ def cmd_pack(args):
     print("next: atlasix build && atlasix lint")
 
 
+def cmd_mcp(args):
+    from .mcp_server import serve
+
+    serve()
+
+
 def cmd_update(args):
     import os
     import subprocess
@@ -603,6 +609,8 @@ def main(argv=None):
     b.set_defaults(fn=cmd_build)
     rs = sub.add_parser("repos")
     rss = rs.add_subparsers(dest="repos_cmd")
+    mp = sub.add_parser("mcp")
+    mp.set_defaults(fn=cmd_mcp)
     sk = sub.add_parser("skill")
     sksub = sk.add_subparsers(dest="skill_cmd", required=True)
     ski = sksub.add_parser("install")

@@ -39,6 +39,16 @@ this repository. Use atlasix for orientation before any change and run
 
 Shell one-liner alternative: `curl -LsSf https://raw.githubusercontent.com/acidsugarx/atlasix/main/install.sh | sh`
 
+### MCP server (first-class tool for MCP-capable harnesses)
+
+`atlasix mcp` runs a stdio MCP server exposing 10 tools (build, profile, show,
+who_uses, search, graph, duplicates, lint, pack_import, bootstrap_hint).
+Add to any MCP client config (Claude Code / opencode / oh-my-pi / Cursor):
+
+```json
+{ "mcpServers": { "atlasix": { "command": "atlasix", "args": ["mcp"] } } }
+```
+
 ```console
 $ atlasix init && atlasix build
 $ atlasix profile          # domain-free summary → input for pack authoring

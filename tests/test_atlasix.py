@@ -255,3 +255,31 @@ def test_init_embeds_agents_md(tmp_path):
     # idempotent: no section duplication
     run("init", cwd=d, home=home)
     assert (d / "AGENTS.md").read_text(encoding="utf-8").count("atlasix:begin") == 1
+
+
+def test_mcp_server_tools(tmp_path):
+    import shutil as _sh
+
+    d = tmp_path / "repo"
+    _sh.copytree(FIXTURE, d)
+    home = tmp_path / "home"
+    run("init", cwd=d, home=home)
+    run("pack", "import", "gitlab-ci", "--force", cwd=d, home=home)
+    run("build", "--no-vectors", cwd=d, home=home)
+
+    import os
+
+    from atlasix import mcp_server
+
+    old_home, old_cwd = os.environ.get("ATLASIX_HOME"), os.getcwd()
+    os.environ["ATLASIX_HOME"] = str(home)
+    os.chdir(d)
+    try:
+        out = mcp_server._run("who-uses", ".build-template")
+    finally:
+        os.chdir(old_cwd)
+        if old_home:
+            os.environ["ATLASIX_HOME"] = old_home
+        else:
+            os.environ.pop("ATLASIX_HOME", None)
+    assert "job:build-dev" in out
