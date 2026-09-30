@@ -51,6 +51,12 @@ Add to any MCP client config (Claude Code / opencode / oh-my-pi / Cursor):
 { "mcpServers": { "atlasix": { "command": "atlasix", "args": ["mcp"] } } }
 ```
 
+### OpenCode plugin
+
+For opencode specifically there is a native plugin (5 tools + background index
+refresh on edits): `atlasix plugin opencode` — copies the plugin into
+`~/.config/opencode/plugins/` and pins the `@opencode-ai/plugin` dep.
+
 ```console
 $ atlasix init && atlasix build
 $ atlasix profile          # domain-free summary → input for pack authoring

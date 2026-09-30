@@ -528,6 +528,36 @@ def cmd_config(args):
             print(f"{k}: {v or '(default)'}")
 
 
+def cmd_plugin(args):
+    import json as _json
+
+    candidates = [
+        Path(__file__).parent / "opencode" / "atlasix.js",      # wheel (force-include)
+        Path(__file__).parent.parent / "opencode" / "atlasix.js",  # repo checkout
+    ]
+    src = next((c for c in candidates if c.is_file()), None)
+    if src is None:
+        print("opencode/atlasix.js not found in package", file=sys.stderr)
+        sys.exit(2)
+    if args.harness == "opencode":
+        plugins = Path.home() / ".config" / "opencode" / "plugins"
+        plugins.mkdir(parents=True, exist_ok=True)
+        (plugins / "atlasix.js").write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        pkg = Path.home() / ".config" / "opencode" / "package.json"
+        data = {"dependencies": {}}
+        if pkg.exists():
+            data = _json.loads(pkg.read_text(encoding="utf-8"))
+            data.setdefault("dependencies", {})
+        data["dependencies"]["@opencode-ai/plugin"] = "*"
+        pkg.write_text(_json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        print(f"installed {plugins / 'atlasix.js'}")
+        print(f"deps: {pkg} (@opencode-ai/plugin — bun install runs on startup)")
+        print("restart opencode to load the plugin")
+    else:
+        print(f"unknown harness {args.harness!r}; available: opencode", file=sys.stderr)
+        sys.exit(2)
+
+
 
 def cmd_pack(args):
     from . import packs
@@ -635,6 +665,9 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     ip = sub.add_parser("init")
     sub.add_parser("update").set_defaults(fn=cmd_update)
+    pl = sub.add_parser("plugin")
+    pl.add_argument("harness", choices=["opencode"])
+    pl.set_defaults(fn=cmd_plugin)
     ip.add_argument("--local", action="store_true", help="create .atlas/ inside the repo instead of ~/.atlasix/repos/")
     ip.add_argument("--no-agents-md", action="store_true", help="skip embedding atlasix rules into repo AGENTS.md")
     ip.set_defaults(fn=cmd_init)

@@ -31,3 +31,4 @@ packages = ["atlasix"]
 [tool.hatch.build.targets.wheel.force-include]
 "SKILL.md" = "atlasix/SKILL.md"
 "packs-authoring.md" = "atlasix/packs-authoring.md"
+"opencode/atlasix.js" = "atlasix/opencode/atlasix.js"
