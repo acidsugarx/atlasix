@@ -528,21 +528,55 @@ def cmd_config(args):
             print(f"{k}: {v or '(default)'}")
 
 
+def cmd_hook_refresh(args):
+    """Debounced background index rebuild — called from harness hooks (edit tools).
+
+    Instant: checks a 30s marker in the state dir and spawns a detached
+    `atlasix build --no-vectors` only when the marker is stale. Safe to call
+    on every edit.
+    """
+    import subprocess
+    import time
+
+    root = _root()
+    d = _atlas_dir(root, create=True)
+    marker = d / ".rebuild-marker"
+    now = time.time()
+    if marker.exists():
+        try:
+            if now - marker.stat().st_mtime < 30:
+                return
+        except OSError:
+            pass
+    marker.touch()
+    subprocess.Popen(
+        [sys.executable, "-m", "atlasix", "build", "--no-vectors", "--json"],
+        cwd=root,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
 def cmd_plugin(args):
     import json as _json
 
-    candidates = [
-        Path(__file__).parent / "opencode" / "atlasix.js",      # wheel (force-include)
-        Path(__file__).parent.parent / "opencode" / "atlasix.js",  # repo checkout
-    ]
-    src = next((c for c in candidates if c.is_file()), None)
-    if src is None:
-        print("opencode/atlasix.js not found in package", file=sys.stderr)
+    pkg_dir = Path(__file__).parent  # wheel (force-include) layout
+    repo_dir = Path(__file__).parent.parent  # repo checkout
+
+    def asset(rel: str) -> Path:
+        for base in (pkg_dir, repo_dir):
+            c = base / rel
+            if c.is_file():
+                return c
+        print(f"{rel} not found in package", file=sys.stderr)
         sys.exit(2)
+
     if args.harness == "opencode":
         plugins = Path.home() / ".config" / "opencode" / "plugins"
         plugins.mkdir(parents=True, exist_ok=True)
-        (plugins / "atlasix.js").write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        (plugins / "atlasix.js").write_text(asset("opencode/atlasix.js").read_text(encoding="utf-8"), encoding="utf-8")
         pkg = Path.home() / ".config" / "opencode" / "package.json"
         data = {"dependencies": {}}
         if pkg.exists():
@@ -553,8 +587,40 @@ def cmd_plugin(args):
         print(f"installed {plugins / 'atlasix.js'}")
         print(f"deps: {pkg} (@opencode-ai/plugin — bun install runs on startup)")
         print("restart opencode to load the plugin")
+
+    elif args.harness == "oh-my-pi":
+        hooks = Path.home() / ".omp" / "agent" / "hooks" / "pre"
+        hooks.mkdir(parents=True, exist_ok=True)
+        (hooks / "atlasix.ts").write_text(asset("oh-my-pi/atlasix.ts").read_text(encoding="utf-8"), encoding="utf-8")
+        print(f"installed {hooks / 'atlasix.ts'}")
+        print("it calls `atlasix hook refresh` (debounced background rebuild) after edit-tool results")
+        print("restart oh-my-pi to load the hook")
+
+    elif args.harness == "claude-code":
+        cmds = Path.home() / ".claude" / "commands"
+        cmds.mkdir(parents=True, exist_ok=True)
+        for name in ("atlasix.md", "atlasix-lint.md"):
+            (cmds / name).write_text(asset(f"claude-code/commands/{name}").read_text(encoding="utf-8"), encoding="utf-8")
+            print(f"installed {cmds / name}")
+        settings = Path.home() / ".claude" / "settings.json"
+        data = {}
+        if settings.exists():
+            data = _json.loads(settings.read_text(encoding="utf-8"))
+            settings.with_suffix(".json.bak-atlasix").write_text(settings.read_text(encoding="utf-8"), encoding="utf-8")
+        hooks_cfg = data.setdefault("hooks", {})
+        post = [h for h in hooks_cfg.get("PostToolUse", []) if "atlasix" not in _json.dumps(h)]
+        post.append(
+            {
+                "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+                "hooks": [{"type": "command", "command": "atlasix hook refresh"}],
+            }
+        )
+        hooks_cfg["PostToolUse"] = post
+        settings.write_text(_json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        print(f"hooks: PostToolUse → `atlasix hook refresh` added to {settings} (backup .bak-atlasix)")
+        print("slash commands: /atlasix <symbol|intent>, /atlasix-lint")
     else:
-        print(f"unknown harness {args.harness!r}; available: opencode", file=sys.stderr)
+        print(f"unknown harness {args.harness!r}; available: opencode, oh-my-pi, claude-code", file=sys.stderr)
         sys.exit(2)
 
 
@@ -620,7 +686,6 @@ SKILL_ROOTS = [
 
 
 def cmd_skill(args):
-    import shutil as _sh
     from pathlib import Path as _P
 
     candidates = [
@@ -665,8 +730,11 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     ip = sub.add_parser("init")
     sub.add_parser("update").set_defaults(fn=cmd_update)
+    hk = sub.add_parser("hook")
+    hksub = hk.add_subparsers(dest="hook_cmd", required=True)
+    hksub.add_parser("refresh").set_defaults(fn=cmd_hook_refresh)
     pl = sub.add_parser("plugin")
-    pl.add_argument("harness", choices=["opencode"])
+    pl.add_argument("harness", choices=["opencode", "oh-my-pi", "claude-code"])
     pl.set_defaults(fn=cmd_plugin)
     ip.add_argument("--local", action="store_true", help="create .atlas/ inside the repo instead of ~/.atlasix/repos/")
     ip.add_argument("--no-agents-md", action="store_true", help="skip embedding atlasix rules into repo AGENTS.md")

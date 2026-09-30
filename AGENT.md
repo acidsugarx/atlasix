@@ -43,9 +43,10 @@ Add to the harness MCP config (user-level `mcpServers`, or project
 After registration, all atlasix commands below are available as MCP tools —
 prefer them over shell invocations.
 
-**1a-bis. OpenCode only:** register the native plugin instead/alongside:
-`atlasix plugin opencode` (5 tools: orient/who_uses/search/duplicates/lint +
-automatic background `atlasix build` after edits, debounced 30s), then restart.
+**1a-bis. Native plugins/hooks (harness-specific):** `atlasix plugin opencode`
+(5 tools + background rebuild), `atlasix plugin oh-my-pi` (tool_result hook →
+`atlasix hook refresh`), `atlasix plugin claude-code` (slash commands
+`/atlasix`, `/atlasix-lint` + PostToolUse hook). Then restart the harness.
 
 **1b. Persist yourself as a skill (do this once, right after install):**
 

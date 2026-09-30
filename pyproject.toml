@@ -32,3 +32,6 @@ packages = ["atlasix"]
 "SKILL.md" = "atlasix/SKILL.md"
 "packs-authoring.md" = "atlasix/packs-authoring.md"
 "opencode/atlasix.js" = "atlasix/opencode/atlasix.js"
+"oh-my-pi/atlasix.ts" = "atlasix/oh-my-pi/atlasix.ts"
+"claude-code/commands/atlasix.md" = "atlasix/claude-code/atlasix.md"
+"claude-code/commands/atlasix-lint.md" = "atlasix/claude-code/atlasix-lint.md"

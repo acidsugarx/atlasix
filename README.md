@@ -53,9 +53,11 @@ Add to any MCP client config (Claude Code / opencode / oh-my-pi / Cursor):
 
 ### OpenCode plugin
 
-For opencode specifically there is a native plugin (5 tools + background index
-refresh on edits): `atlasix plugin opencode` — copies the plugin into
-`~/.config/opencode/plugins/` and pins the `@opencode-ai/plugin` dep.
+For opencode: `atlasix plugin opencode` — 5 native tools + debounced background
+index refresh. For oh-my-pi: `atlasix plugin oh-my-pi` — a `tool_result` hook
+(`~/.omp/agent/hooks/pre/atlasix.ts`) calling `atlasix hook refresh`. For
+Claude Code: `atlasix plugin claude-code` — slash commands `/atlasix`,
+`/atlasix-lint` + a PostToolUse hook in `~/.claude/settings.json`.
 
 ```console
 $ atlasix init && atlasix build
