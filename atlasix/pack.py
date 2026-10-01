@@ -9,7 +9,7 @@ from pathlib import Path
 from ruamel.yaml import YAML
 
 EXTRACTORS = {"yaml_jobs", "yaml_keys", "regex", "json_pointer", "line_symbols", "tree_sitter"}
-RESOLVERS = {"same_doc_dict", "repo_path", "entity_name", "global_name", "include_aware", "same_doc_anchor", "none"}
+RESOLVERS = {"same_doc_dict", "repo_path", "relative_path", "entity_name", "global_name", "include_aware", "same_doc_anchor", "none"}
 
 
 class PackError(Exception):

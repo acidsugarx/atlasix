@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import posixpath
 import re
 import sqlite3
 import struct
@@ -132,6 +133,9 @@ class Indexer:
                         self._add_edge(ref, row, target, raw, by_name)
                 else:
                     data = json.loads(row["data_json"])
+                    if ref.field == "name":
+                        self._add_edge(ref, row, row["name"], row["name"], by_name, rows_all)
+                        continue
                     val = data.get(ref.field)
                     if val is None:
                         continue
@@ -177,6 +181,23 @@ class Indexer:
                         break
             if fid is not None:
                 dst = fid
+        elif ref.resolve == "relative_path":
+            # nushell-style module path relative to the source file's directory:
+            # `use ../../logger/` → <dir>/../../logger/{mod.nu,logger.nu}
+            base = src_row["path"].rsplit("/", 1)[0] if "/" in src_row["path"] else ""
+            t = target.replace("\\", "/").strip().rstrip("/")
+            while t.startswith("./"):
+                t = t[2:]
+            full = posixpath.normpath(f"{base}/{t}") if base else posixpath.normpath(t)
+            if re.search(r"\.[A-Za-z0-9]+$", full):
+                cands = [full]
+            else:
+                cands = [f"{full}/mod.nu", f"{full}.nu", full]
+            for c in cands:
+                fid = self._file_entity.get(c)
+                if fid is not None:
+                    dst = fid
+                    break
         elif ref.resolve == "global_name":
             for r in by_name.get(target, []):
                 self.conn.execute(

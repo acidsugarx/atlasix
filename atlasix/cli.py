@@ -40,7 +40,7 @@ entity_types:
 references:
   extends:
     from: {entity: job, field: extends}
-    resolve: same_doc_dict          # same_doc_dict | repo_path | none
+    resolve: same_doc_dict          # same_doc_dict | repo_path | relative_path | none
   includes:
     from: {entity: file, field: raw_regex, pattern: '(\\S+\\.yml)@(\\S+)'}
     resolve: repo_path

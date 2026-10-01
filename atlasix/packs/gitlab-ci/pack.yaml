@@ -19,6 +19,9 @@ entity_types:
     extractor: line_symbols
     pattern: '^\s*use\s+(?P<name>\S+)'
 references:
+  nu_uses:
+    from: {entity: nu_use, field: name}
+    resolve: relative_path     # nushell: `use ../logger/` → ../logger/mod.nu relative to source file
   extends:
     from: {entity: job, field: extends}
     resolve: include_aware     # GitLab semantics: the target included into THIS pipeline

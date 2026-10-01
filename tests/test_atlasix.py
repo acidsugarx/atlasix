@@ -343,6 +343,51 @@ def test_ru_tokenizer():
     assert _tokenize("docker build") == ["docker", "build"]
 
 
+def test_relative_path_nu_uses(tmp_path):
+    # nushell: `use ../logger/` resolves to ../logger/mod.nu relative to source file
+    d = tmp_path / "repo"
+    (d / "lib" / "logger").mkdir(parents=True)
+    (d / "lib" / "actions").mkdir(parents=True)
+    (d / "lib" / "logger" / "mod.nu").write_text(
+        "export def log [msg: string] { print $msg }\n", encoding="utf-8"
+    )
+    (d / "lib" / "actions" / "build.nu").write_text(
+        "use ../logger/\nuse ../missing/\nexport def build [] { log 'x' }\n",
+        encoding="utf-8",
+    )
+    (d / ".atlas").mkdir()
+    (d / ".atlas" / "pack.yaml").write_text(
+        "version: 1\n"
+        "entity_types:\n"
+        "  nu_module:\n"
+        "    files: [\"**/*.nu\"]\n"
+        "    extractor: line_symbols\n"
+        "    pattern: '^\\s*export def\\s+\"?(?P<name>[\\w][\\w -]*)\"?\\s*[\\[(]'\n"
+        "  nu_use:\n"
+        "    files: [\"**/*.nu\"]\n"
+        "    extractor: line_symbols\n"
+        "    pattern: '^\\s*use\\s+(?P<name>\\S+)'\n"
+        "references:\n"
+        "  nu_uses:\n"
+        "    from: {entity: nu_use, field: name}\n"
+        "    resolve: relative_path\n",
+        encoding="utf-8",
+    )
+    assert run("build", "--no-vectors", cwd=d).returncode == 0
+    conn = sqlite3.connect(d / ".atlas" / "index.db")
+    n = conn.execute(
+        "SELECT count(*) FROM edges ed JOIN entities a ON a.id=ed.src_id JOIN entities b ON b.id=ed.dst_id "
+        "WHERE ed.rel='nu_uses' AND b.path='lib/logger/mod.nu'"
+    ).fetchone()[0]
+    assert n == 1
+    # broken module stays an unresolved-ref edge (lint data)
+    m = conn.execute(
+        "SELECT count(*) FROM edges ed JOIN entities a ON a.id=ed.src_id "
+        "WHERE ed.rel='nu_uses' AND ed.dst_id IS NULL AND a.name='../missing/'"
+    ).fetchone()[0]
+    assert m == 1
+
+
 def test_tree_sitter_extractor(tmp_path):
     from atlasix.pack import EntitySpec, extract
 
